@@ -168,7 +168,7 @@ void sendTimeSync() {
 
     timeSync.averageDecodeLatency = (uint32_t) LatencyCollector::Instance().getLatency(2);
 
-    timeSync.fecFailure = g_socket.m_nalParser->fecFailure() ? 1 : 0;
+    timeSync.fecFailure = 0;
     timeSync.fecFailureTotal = LatencyCollector::Instance().getFecFailureTotal();
     timeSync.fecFailureInSecond = LatencyCollector::Instance().getFecFailureInSecond();
 

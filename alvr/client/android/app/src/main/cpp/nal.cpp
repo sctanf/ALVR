@@ -85,8 +85,6 @@ bool NALParser::processPacket(VideoFrame *packet, int packetSize, bool &fecFailu
             LOGI("Got frame=%d %d, Codec=%d", (std::int32_t) NALType, end, m_codec);
             push(&frameBuffer[0], end, packet->trackingFrameIndex);
             push(&frameBuffer[end], frameByteSize - end, packet->trackingFrameIndex);
-
-            m_queue.clearFecFailure();
         } else
         {
             push(&frameBuffer[0], frameByteSize, packet->trackingFrameIndex);
@@ -121,11 +119,6 @@ void NALParser::push(const std::byte *buffer, int length, uint64_t frameIndex)
     m_env->CallVoidMethod(mUdpManager, mPushNALMethodID, nal);
 
     m_env->DeleteLocalRef(nal);
-}
-
-bool NALParser::fecFailure()
-{
-    return m_queue.fecFailure();
 }
 
 int NALParser::findVPSSPS(const std::byte *frameBuffer, int frameByteSize)

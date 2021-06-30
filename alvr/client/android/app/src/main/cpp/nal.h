@@ -14,8 +14,6 @@ public:
 
     void setCodec(int codec);
     bool processPacket(VideoFrame *packet, int packetSize, bool &fecFailure);
-
-    bool fecFailure();
 private:
     void push(const std::byte *buffer, int length, uint64_t frameIndex);
     int findVPSSPS(const std::byte *frameBuffer, int frameByteSize);
