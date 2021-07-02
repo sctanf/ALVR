@@ -43,10 +43,10 @@ void NALParser::setCodec(int codec)
     m_codec = codec;
 }
 
-bool NALParser::processPacket(VideoFrame *packet, int packetSize, bool &fecFailure)
+bool NALParser::processPacket(VideoFrame *packet, int packetSize)
 {
     if (m_enableFEC) {
-        m_queue.addVideoPacket(packet, packetSize, fecFailure);
+        m_queue.addVideoPacket(packet, packetSize);
     }
 
     bool result = m_queue.reconstruct();

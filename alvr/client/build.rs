@@ -39,11 +39,6 @@ fn main() {
             .cpp_link_stdlib("c++_static")
             .compile("bindings");
 
-        cc::Build::new()
-            .cpp(false)
-            .files(&[common_cpp_dir.join("reedsolomon").join("rs.c")])
-            .compile("bindings_rs_c");
-
         println!(
             "cargo:rustc-link-search=native={}/app/src/main/jniLibs/arm64-v8a",
             base_cpp_dir.to_string_lossy()

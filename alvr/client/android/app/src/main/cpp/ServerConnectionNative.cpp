@@ -104,14 +104,9 @@ void legacyReceive(const unsigned char *packet, unsigned int packetSize) {
         processVideoSequence(header->packetCounter);
 
         // Following packets of a video frame
-        bool fecFailure = false;
-        bool ret2 = g_socket.m_nalParser->processPacket(header, packetSize, fecFailure);
+        bool ret2 = g_socket.m_nalParser->processPacket(header, packetSize);
         if (ret2) {
             LatencyCollector::Instance().receivedLast(header->trackingFrameIndex);
-        }
-        if (fecFailure) {
-            LatencyCollector::Instance().fecFailure();
-            sendPacketLossReport(ALVR_LOST_FRAME_TYPE_VIDEO, 0, 0);
         }
     } else if (type == ALVR_PACKET_TYPE_TIME_SYNC) {
         // Time sync packet
@@ -167,10 +162,6 @@ void sendTimeSync() {
     timeSync.averageTransportLatency = (uint32_t) LatencyCollector::Instance().getLatency(1);
 
     timeSync.averageDecodeLatency = (uint32_t) LatencyCollector::Instance().getLatency(2);
-
-    timeSync.fecFailure = 0;
-    timeSync.fecFailureTotal = LatencyCollector::Instance().getFecFailureTotal();
-    timeSync.fecFailureInSecond = LatencyCollector::Instance().getFecFailureInSecond();
 
     timeSync.fps = LatencyCollector::Instance().getFramesInSecond();
 

@@ -4,14 +4,13 @@
 #include <list>
 #include <vector>
 #include "packet_types.h"
-#include "reedsolomon/rs.h"
 
 class FECQueue {
 public:
     FECQueue();
     ~FECQueue();
 
-    void addVideoPacket(const VideoFrame *packet, int packetSize, bool &fecFailure);
+    void addVideoPacket(const VideoFrame *packet, int packetSize);
     bool reconstruct();
     const std::byte *getFrameBuffer();
     int getFrameByteSize();

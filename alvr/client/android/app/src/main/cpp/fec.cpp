@@ -15,7 +15,7 @@ FECQueue::~FECQueue() {
 }
 
 // Add packet to queue. packet must point to buffer whose size=ALVR_MAX_PACKET_SIZE.
-void FECQueue::addVideoPacket(const VideoFrame *packet, int packetSize, bool &fecFailure) {
+void FECQueue::addVideoPacket(const VideoFrame *packet, int packetSize) {
     if (m_recovered && m_currentFrame.videoFrameIndex == packet->videoFrameIndex) {
         return;
     }

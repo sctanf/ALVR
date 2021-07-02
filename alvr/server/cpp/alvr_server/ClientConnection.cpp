@@ -20,11 +20,8 @@ ClientConnection::ClientConnection(
 
 	m_Statistics = std::make_shared<Statistics>();
 
-	reed_solomon_init();
-	
 	videoPacketCounter = 0;
 	soundPacketCounter = 0;
-	m_fecPercentage = INITIAL_FEC_PERCENTAGE;
 	memset(&m_reportedStatistics, 0, sizeof(m_reportedStatistics));
 	m_Statistics->ResetAll();
 }
@@ -43,7 +40,6 @@ void ClientConnection::FECSend(uint8_t *buf, int len, uint64_t frameIndex, uint6
 	header->videoFrameIndex = videoFrameIndex;
 	header->sentTime = GetTimestampUs();
 	header->frameByteSize = len;
-	header->fecPercentage = (uint16_t)m_fecPercentage;
 	header->fecIndex = 0;
 	for (int i = 0;; i++) {
 		int copyLength = std::min(ALVR_MAX_VIDEO_BUFFER_SIZE, dataRemain);
@@ -137,9 +133,6 @@ void ClientConnection::ProcessRecv(unsigned char *buf, size_t len) {
 			float idleTime = timing[0].m_flCompositorIdleCpuMs;
 			float waitTime = timing[0].m_flClientFrameIntervalMs + timing[0].m_flPresentCallCpuMs + timing[0].m_flWaitForPresentCpuMs + timing[0].m_flSubmitFrameMs;
 
-			if (timeSync->fecFailure) {
-				OnFecFailure();
-			}
 			Info("#{ \"id\": \"Statistics\", \"data\": {"
 				"\"bitrate\": %llu, "
 				"\"sendAverage\": %.3f, "
@@ -158,9 +151,6 @@ void ClientConnection::ProcessRecv(unsigned char *buf, size_t len) {
 				"\"encodeLatency\": %.3f, "
 				"\"sendLatency\": %.3f, "
 				"\"decodeLatency\": %.3f, "
-				"\"fecPercentage\": %d, "
-				"\"fecFailureTotal\": %llu, "
-				"\"fecFailureInSecond\": %llu, "
 				"\"clientFPS\": %.3f, "
 				"\"serverFPS\": %.3f"
 				"} }#\n",
@@ -180,9 +170,7 @@ void ClientConnection::ProcessRecv(unsigned char *buf, size_t len) {
 				waitTime,
 				(double)(m_Statistics->GetEncodeLatencyAverage()) / US_TO_MS,
 				m_reportedStatistics.averageTransportLatency / 1000.0,
-				m_reportedStatistics.averageDecodeLatency / 1000.0, m_fecPercentage,
-				m_reportedStatistics.fecFailureTotal,
-				m_reportedStatistics.fecFailureInSecond,
+				m_reportedStatistics.averageDecodeLatency / 1000.0,
 				m_reportedStatistics.fps,
 				m_Statistics->GetFPS());
 		}
@@ -224,12 +212,6 @@ uint64_t ClientConnection::serverToClientTime(uint64_t serverTime) const {
 
 void ClientConnection::OnFecFailure() {
 	Debug("Listener::OnFecFailure()\n");
-	if (GetTimestampUs() - m_lastFecFailure < CONTINUOUS_FEC_FAILURE) {
-		if (m_fecPercentage < MAX_FEC_PERCENTAGE) {
-			m_fecPercentage += 5;
-		}
-	}
-	m_lastFecFailure = GetTimestampUs();
 	m_PacketLossCallback();
 }
 

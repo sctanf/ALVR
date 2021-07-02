@@ -2,7 +2,6 @@
 #define ALVRCLIENT_PACKETTYPES_H
 #include <stdint.h>
 #include <assert.h>
-#include "reedsolomon/rs.h"
 
 // Maximum UDP packet size (payload size in bytes)
 static const int ALVR_MAX_PACKET_SIZE = 65000;
@@ -240,10 +239,6 @@ struct TimeSync {
 
 	uint32_t averageDecodeLatency;
 
-	uint32_t fecFailure;
-	uint64_t fecFailureInSecond;
-	uint64_t fecFailureTotal;
-
 	float fps;
 
 	// Following value are filled by server only when mode=1.
@@ -262,7 +257,6 @@ struct VideoFrame {
 	uint64_t sentTime;
 	uint32_t frameByteSize;
 	uint32_t fecIndex;
-	uint16_t fecPercentage;
 	// char frameBuffer[];
 };
 // Report packet loss/error from client to server.
@@ -284,25 +278,5 @@ struct HapticsFeedback {
 #pragma pack(pop)
 
 static const int ALVR_MAX_VIDEO_BUFFER_SIZE = ALVR_MAX_PACKET_SIZE - sizeof(VideoFrame);
-
-static const int ALVR_FEC_SHARDS_MAX = 20;
-
-inline int CalculateParityShards(int dataShards, int fecPercentage) {
-	int totalParityShards = (dataShards * fecPercentage + 99) / 100;
-	return totalParityShards;
-}
-
-// Calculate how many packet is needed for make signal shard.
-inline int CalculateFECShardPackets(int len, int fecPercentage) {
-	// This reed solomon implementation accept only 255 shards.
-	// Normally, we use ALVR_MAX_VIDEO_BUFFER_SIZE as block_size and single packet becomes single shard.
-	// If we need more than maxDataShards packets, we need to combine multiple packet to make single shrad.
-	// NOTE: Moonlight seems to use only 255 shards for video frame.
-	int maxDataShards = ((ALVR_FEC_SHARDS_MAX - 2) * 100 + 99 + fecPercentage) / (100 + fecPercentage);
-	int minBlockSize = (len + maxDataShards - 1) / maxDataShards;
-	int shardPackets = (minBlockSize + ALVR_MAX_VIDEO_BUFFER_SIZE - 1) / ALVR_MAX_VIDEO_BUFFER_SIZE;
-	assert(maxDataShards + CalculateParityShards(maxDataShards, fecPercentage) <= ALVR_FEC_SHARDS_MAX);
-	return shardPackets;
-}
 
 #endif //ALVRCLIENT_PACKETTYPES_H
