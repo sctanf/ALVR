@@ -33,7 +33,7 @@ ClientConnection::~ClientConnection() {
 }
 
 void ClientConnection::FECSend(uint8_t *buf, int len, uint64_t frameIndex, uint64_t videoFrameIndex) {
-	uint8_t packetBuffer[2000];
+	uint8_t packetBuffer[ALVR_MAX_PACKET_SIZE];
 	VideoFrame *header = (VideoFrame *)packetBuffer;
 	uint8_t *payload = packetBuffer + sizeof(VideoFrame);
 	int dataRemain = len;

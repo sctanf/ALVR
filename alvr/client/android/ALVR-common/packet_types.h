@@ -5,7 +5,7 @@
 #include "reedsolomon/rs.h"
 
 // Maximum UDP packet size (payload size in bytes)
-static const int ALVR_MAX_PACKET_SIZE = 1400;
+static const int ALVR_MAX_PACKET_SIZE = 65000;
 
 // Maximum UDP packet size
 static const int MAX_PACKET_UDP_PACKET_SIZE = 2000;

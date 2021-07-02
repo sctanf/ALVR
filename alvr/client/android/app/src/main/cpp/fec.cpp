@@ -30,11 +30,11 @@ void FECQueue::addVideoPacket(const VideoFrame *packet, int packetSize, bool &fe
         m_marks.resize(m_packets);
         memset(&m_marks[0], 1, m_packets);
 
-        if (m_frameBuffer.size() < m_packets * ALVR_MAX_VIDEO_BUFFER_SIZE) {
+        if (m_frameBuffer.size() < m_currentFrame.frameByteSize) {
             // Only expand buffer for performance reason.
-            m_frameBuffer.resize(m_packets * ALVR_MAX_VIDEO_BUFFER_SIZE);
+            m_frameBuffer.resize(m_currentFrame.frameByteSize);
         }
-        memset(&m_frameBuffer[0], 0, m_packets * ALVR_MAX_VIDEO_BUFFER_SIZE);
+        memset(&m_frameBuffer[0], 0, m_currentFrame.frameByteSize);
     }
     if (m_marks[packet->fecIndex] == 0) {
         // Duplicate packet.
@@ -49,10 +49,6 @@ void FECQueue::addVideoPacket(const VideoFrame *packet, int packetSize, bool &fe
     char *payload = ((char *) packet) + sizeof(VideoFrame);
     int payloadSize = packetSize - sizeof(VideoFrame);
     memcpy(p, payload, payloadSize);
-    if (payloadSize != ALVR_MAX_VIDEO_BUFFER_SIZE) {
-        // Fill padding
-        memset(p + payloadSize, 0, ALVR_MAX_VIDEO_BUFFER_SIZE - payloadSize);
-    }
 }
 
 bool FECQueue::reconstruct() {
