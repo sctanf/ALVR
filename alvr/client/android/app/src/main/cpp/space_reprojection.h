@@ -1,5 +1,6 @@
 #pragma once
 
+#define GL_GLEXT_PROTOTYPES
 #include <GLES3/gl3.h>
 #include <GLES2/gl2ext.h>
 
@@ -18,7 +19,7 @@ struct ReprojectionData {
 
 class Reprojection {
 public:
-    Reprojection(gl_render_utils::Texture *mInputSurface);
+    Reprojection(gl_render_utils::Texture *inputSurface);
 
     void Initialize(ReprojectionData reprojectionData);
 

@@ -13,6 +13,7 @@
 #include <android/native_window_jni.h>
 #include <android/input.h>
 #include "ffr.h"
+#include "space_reprojection.h"
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
 #include <GLES3/gl3.h>
@@ -28,7 +29,6 @@
 #include <inttypes.h>
 #include <glm/gtx/euler_angles.hpp>
 #include <mutex>
-#include "space_reprojection.h"
 
 using namespace std;
 using namespace gl_render_utils;

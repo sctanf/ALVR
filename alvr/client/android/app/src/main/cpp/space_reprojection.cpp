@@ -1,5 +1,7 @@
 #include "space_reprojection.h"
 
+#define GL_GLEXT_PROTOTYPES
+
 #include <cmath>
 #include <memory>
 
@@ -51,8 +53,8 @@ namespace {
 }
 
 
-Reprojection::Reprojection(Texture *mInputSurface)
-    : mInputSurface(mInputSurface) {
+Reprojection::Reprojection(Texture *inputSurface)
+        : mInputSurface(inputSurface) {
 }
 
 void Reprojection::Initialize(ReprojectionData reprojectionData) {
@@ -76,8 +78,12 @@ void Reprojection::Initialize(ReprojectionData reprojectionData) {
             new RenderPipeline({mTargetTexture.get()}, QUAD_2D_VERTEX_SHADER,
                                CopyShaderStr));
 
+    GLint searchBlockX, searchBlockY;
+    glGetIntegerv(GL_MOTION_ESTIMATION_SEARCH_BLOCK_X_QCOM, &searchBlockX);
+    glGetIntegerv(GL_MOTION_ESTIMATION_SEARCH_BLOCK_Y_QCOM, &searchBlockY);
+
     mMotionVector.reset(
-            new Texture(false, reprojectionData.eyeWidth * 2 / MOTION_ESTIMATION_SEARCH_BLOCK_X_QCOM, reprojectionData.eyeHeight / MOTION_ESTIMATION_SEARCH_BLOCK_Y_QCOM, GL_RGBA16F));
+            new Texture(false, reprojectionData.eyeWidth * 2 / searchBlockX, reprojectionData.eyeHeight / searchBlockY, GL_RGBA16F));
 
     mReprojectedTexture.reset(
             new Texture(false, reprojectionData.eyeWidth * 2, reprojectionData.eyeHeight, GL_RGB8));
@@ -100,7 +106,7 @@ void Reprojection::AddFrame(ovrTracking2 *tracking, uint64_t renderTime) {
 }
 
 void Reprojection::EstimateMotion() {
-    TexEstimateMotionQCOM(mTargetTexture->GetGLTexture(), mRefTexture->GetGLTexture(), mMotionVector->GetGLTexture());
+    glTexEstimateMotionQCOM(mTargetTexture->GetGLTexture(), mRefTexture->GetGLTexture(), mMotionVector->GetGLTexture());
 // reversed inputs to TexEstimateMotionQCOM so the starting position doesnt need to be corrected
 }
 
