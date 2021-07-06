@@ -910,7 +910,7 @@ void renderReprojection() {
     frameDesc.Flags = 0;
     frameDesc.SwapInterval = 1;
     //frameDesc.FrameIndex = renderedFrameIndex;
-    frameDesc.FrameIndex = 0;
+    frameDesc.FrameIndex = g_ctx.FrameIndex;
     frameDesc.DisplayTime = 0.0;
     frameDesc.LayerCount = 1;
     frameDesc.Layers = layers2;

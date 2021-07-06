@@ -112,7 +112,7 @@ void Reprojection::AddFrame(ovrTracking2 *tracking, uint64_t renderTime) {
 
 void Reprojection::EstimateMotion() {
 // reversed inputs to TexEstimateMotionQCOM so the starting position doesnt need to be corrected
-    glTexEstimateMotionQCOM(mTargetTexture->GetGLTexture(), mRefTexture->GetGLTexture(), mMotionVector->GetGLTexture());
+    GL(glTexEstimateMotionQCOM(mTargetTexture->GetGLTexture(), mRefTexture->GetGLTexture(), mMotionVector->GetGLTexture()));
 }
 
 void Reprojection::Reproject(uint64_t displayTime) {
