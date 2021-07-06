@@ -13,7 +13,6 @@ namespace {
         #version 300 es
         #extension GL_OES_EGL_image_external_essl3 : enable
         #extension GL_EXT_YUV_target : enable
-        #extension GL_QCOM_motion_estimation : enable
         precision highp float;
 
     )glsl";
