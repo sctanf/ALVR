@@ -5,6 +5,18 @@
 #include <GLES3/gl3.h>
 #include <GLES2/gl2ext.h>
 
+#ifndef GL_QCOM_motion_estimation
+#define GL_QCOM_motion_estimation 1
+#define GL_MOTION_ESTIMATION_SEARCH_BLOCK_X_QCOM 0x8C90
+#define GL_MOTION_ESTIMATION_SEARCH_BLOCK_Y_QCOM 0x8C91
+typedef void (GL_APIENTRYP PFNGLTEXESTIMATEMOTIONQCOMPROC) (GLuint ref, GLuint target, GLuint output);
+typedef void (GL_APIENTRYP PFNGLTEXESTIMATEMOTIONREGIONSQCOMPROC) (GLuint ref, GLuint target, GLuint output, GLuint mask);
+#ifdef GL_GLEXT_PROTOTYPES
+GL_APICALL void GL_APIENTRY glTexEstimateMotionQCOM (GLuint ref, GLuint target, GLuint output);
+GL_APICALL void GL_APIENTRY glTexEstimateMotionRegionsQCOM (GLuint ref, GLuint target, GLuint output, GLuint mask);
+#endif
+#endif /* GL_QCOM_motion_estimation */
+
 #include <VrApi.h>
 #include <VrApi_Types.h>
 #include <memory>
@@ -31,7 +43,7 @@ public:
 
     void Reproject(uint64_t displayTime);
 
-    void Render(uint64_t deltaTime);
+    bool Render(uint64_t deltaTime);
 
     void Reset();
 

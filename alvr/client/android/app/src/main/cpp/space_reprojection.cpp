@@ -128,17 +128,21 @@ void Reprojection::Reproject(uint64_t displayTime) {
     mReprojectedTracking->HeadPose.Pose.Orientation = Slerp(mRefTracking->HeadPose.Pose.Orientation, mTargetTracking->HeadPose.Pose.Orientation, 1 + magnitude);
 }
 
+//make sure to only call once from main thread, right before vsync happens
 //Reprojection::Render((vrapi_GetPredictedDisplayTime(OvrContext.Ovr, OvrContext.FrameIndex) - vrapi_GetTimeInSeconds()) * 1000 * 1000);
-void Reprojection::Render(uint64_t deltaTime) {
-    if (emptyFrames > 0) return;
+bool Reprojection::Render(uint64_t deltaTime) {
+    if (emptyFrames > 0) return false;
     if (!frameSent) {
         const uint64_t currentTimeUs = getTimestampUs();
-        if (deltaTime < 2000) {
+        //if (deltaTime < 2000) {
             // Less than 2ms remaining, submit a frame now
             Reprojection::Reproject(currentTimeUs + deltaTime);
-            // Submit the reprojected frame
-        }
+            //need to submit the reprojected frame
+        //}
+        return true;
     }
+    frameSent = false;
+    return false;
 }
 
 void Reprojection::Reset() {
