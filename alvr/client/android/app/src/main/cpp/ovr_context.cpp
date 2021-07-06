@@ -894,6 +894,30 @@ void renderNative(long long renderedFrameIndex) {
     }
 }
 
+void renderReprojection() {
+    ovrTracking2 tracking;
+
+// Render eye images and setup the primary layer using ovrTracking2.
+    const ovrLayerProjection2 worldLayer =
+            ovrRenderer_RenderFrame(&g_ctx.Renderer, &tracking, false);
+
+    const ovrLayerHeader2 *layers2[] =
+            {
+                    &worldLayer.Header
+            };
+
+    ovrSubmitFrameDescription2 frameDesc = {};
+    frameDesc.Flags = 0;
+    frameDesc.SwapInterval = 1;
+    //frameDesc.FrameIndex = renderedFrameIndex;
+    frameDesc.FrameIndex = 0;
+    frameDesc.DisplayTime = 0.0;
+    frameDesc.LayerCount = 1;
+    frameDesc.Layers = layers2;
+
+    vrapi_SubmitFrame2(g_ctx.Ovr, &frameDesc);
+}
+
 void renderLoadingNative() {
     double DisplayTime = GetTimeInSeconds();
 

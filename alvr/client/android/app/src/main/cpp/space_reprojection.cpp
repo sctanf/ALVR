@@ -100,11 +100,13 @@ void Reprojection::Initialize(ReprojectionData reprojectionData) {
 
 void Reprojection::AddFrame(ovrTracking2 *tracking, uint64_t renderTime) {
     mCopyPipeline->Render(*mRefState);
-    mRefTracking =  mTargetTracking;
+    //mRefTracking = mTargetTracking;
+    memcpy(mRefTracking, mTargetTracking, sizeof(ovrTracking2));
     mRefTime = mTargetTime;
 
     mRGBtoLuminancePipeline->Render(*mTargetState);
-    mTargetTracking = tracking;
+    //mTargetTracking = tracking;
+    memcpy(mTargetTracking, tracking, sizeof(ovrTracking2));
     mTargetTime = renderTime;
 }
 
