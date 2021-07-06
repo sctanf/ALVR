@@ -43,12 +43,22 @@ namespace {
         void main() {
             color.width = tex0.width / MOTION_ESTIMATION_SEARCH_BLOCK_X_QCOM;
             color.height = tex0.height / MOTION_ESTIMATION_SEARCH_BLOCK_Y_QCOM;
-            TexEstimateMotionQCOM(tex0, tex1, color);
+            TexEstimateMotionQCOM(tex1, tex0, color);
         }
     )glsl";
+// reversed inputs to TexEstimateMotionQCOM so the starting position doesnt need to be corrected
 
     const string REPROJECTION_FRAGMENT_SHADER = R"glsl(
+        uniform samplerExternalOES tex0, tex1;
+        in vec2 uv;
+        out vec4 color;
+        void main() {
+            uv += texture(tex1, uv).rg * -1. * .5;
+            color = texture(tex0, uv);
+        }
     )glsl";
+// how to resize the motion vectors?
+//uv -= texture(tex1, uv).rg;
 }
 
 
