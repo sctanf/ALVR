@@ -873,7 +873,7 @@ void renderNative(long long renderedFrameIndex) {
     // TimeSync here might be an issue but it seems to work fine
     sendTimeSync();
 
-// Run motion estimation
+// Run motion estimation (preemptive)
     if (g_ctx.Renderer.enableReprojection) {
         g_ctx.Renderer.reprojection->EstimateMotion();
     }
@@ -899,7 +899,7 @@ void renderReprojection() {
 
 // Render eye images and setup the primary layer using ovrTracking2.
     const ovrLayerProjection2 worldLayer =
-            ovrRenderer_RenderFrame(&g_ctx.Renderer, &tracking, false);
+            ovrRenderer_RenderFrame(&g_ctx.Renderer, &tracking, false); //need to disable ffr while reprojecting, as the image is already uncompressed
 
     const ovrLayerHeader2 *layers2[] =
             {
