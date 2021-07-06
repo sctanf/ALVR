@@ -94,6 +94,8 @@ void Reprojection::Initialize(ReprojectionData reprojectionData) {
 
     mTargetTime = 0;
     mRefTime = 0;
+    emptyFrames = 2;
+    frameSent = false;
 }
 
 void Reprojection::AddFrame(ovrTracking2 *tracking, uint64_t renderTime) {
@@ -105,19 +107,40 @@ void Reprojection::AddFrame(ovrTracking2 *tracking, uint64_t renderTime) {
     mRGBtoLuminancePipeline->Render(*mTargetState);
     //mTargetTracking = tracking;
     memcpy(mTargetTracking, tracking, sizeof(ovrTracking2));
+    memcpy(mReprojectedTracking, tracking, sizeof(ovrTracking2));
     mTargetTime = renderTime;
+
+    if (emptyFrames > 0) emptyFrames--;
 }
 
 void Reprojection::EstimateMotion() {
+    if (emptyFrames > 0) return;
 // reversed inputs to TexEstimateMotionQCOM so the starting position doesnt need to be corrected
     GL(glTexEstimateMotionQCOM(mTargetTexture->GetGLTexture(), mRefTexture->GetGLTexture(), mMotionVector->GetGLTexture()));
 }
 
 void Reprojection::Reproject(uint64_t displayTime) {
-	float magnitude = (double)(displayTime - mTargetTime) / (double)(mTargetTime - mRefTime);
+    if (emptyFrames > 0) return;
+    float magnitude = (double)(displayTime - mTargetTime) / (double)(mTargetTime - mRefTime);
+
     mReprojectionPipeline->Render(*mReprojectedTextureState, &magnitude);
-// need to estimate tracking
+
+    mReprojectedTracking->HeadPose.Pose.Orientation = Slerp(mRefTracking->HeadPose.Pose.Orientation, mTargetTracking->HeadPose.Pose.Orientation, 1 + magnitude);
 }
 
-void Reprojection::Render() {
+//Reprojection::Render((vrapi_GetPredictedDisplayTime(OvrContext.Ovr, OvrContext.FrameIndex) - vrapi_GetTimeInSeconds()) * 1000 * 1000);
+void Reprojection::Render(uint64_t deltaTime) {
+    if (emptyFrames > 0) return;
+    if (!frameSent) {
+        const uint64_t currentTimeUs = getTimestampUs();
+        if (deltaTime < 2000) {
+            // Less than 2ms remaining, submit a frame now
+            Reprojection::Reproject(currentTimeUs + deltaTime);
+            // Submit the reprojected frame
+        }
+    }
+}
+
+void Reprojection::Reset() {
+    frameSent = true; //need to set to false after vsync
 }

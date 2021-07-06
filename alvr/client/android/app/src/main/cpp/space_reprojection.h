@@ -5,6 +5,7 @@
 #include <GLES3/gl3.h>
 #include <GLES2/gl2ext.h>
 
+#include <VrApi.h>
 #include <VrApi_Types.h>
 #include <memory>
 #include <vector>
@@ -30,12 +31,18 @@ public:
 
     void Reproject(uint64_t displayTime);
 
-    void Render();
+    void Render(uint64_t deltaTime);
+
+    void Reset();
 
     gl_render_utils::Texture *GetOutputTexture() { return mReprojectedTexture.get(); }
 
 private:
 
+    uint32_t emptyFrames;
+    bool frameSent;
+
+// need to add a check for extension string as this is not supported on quest 1
     PFNGLTEXESTIMATEMOTIONQCOMPROC glTexEstimateMotionQCOM = (PFNGLTEXESTIMATEMOTIONQCOMPROC)eglGetProcAddress("glTexEstimateMotionQCOM");
 
     gl_render_utils::Texture *mInputSurface;
@@ -58,4 +65,5 @@ private:
     std::unique_ptr<gl_render_utils::Texture> mReprojectedTexture;
     std::unique_ptr<gl_render_utils::RenderState> mReprojectedTextureState;
     std::unique_ptr<gl_render_utils::RenderPipeline> mReprojectionPipeline;
+    ovrTracking2 *mReprojectedTracking;
 };

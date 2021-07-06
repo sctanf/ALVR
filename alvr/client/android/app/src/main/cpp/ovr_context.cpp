@@ -875,6 +875,7 @@ void renderNative(long long renderedFrameIndex) {
 
 // Run motion estimation (preemptive)
     if (g_ctx.Renderer.enableReprojection) {
+        g_ctx.Renderer.reprojection->Reset();
         g_ctx.Renderer.reprojection->EstimateMotion();
     }
 
