@@ -17,7 +17,6 @@ GL_APICALL void GL_APIENTRY glTexEstimateMotionRegionsQCOM (GLuint ref, GLuint t
 #endif
 #endif /* GL_QCOM_motion_estimation */
 
-#include <VrApi.h>
 #include <VrApi_Types.h>
 #include <memory>
 #include <vector>
@@ -48,6 +47,8 @@ public:
     void Reset();
 
     gl_render_utils::Texture *GetOutputTexture() { return mReprojectedTexture.get(); }
+
+    ovrTracking2 *GetOutputTracking() { return mReprojectedTracking; }
 
 private:
 
