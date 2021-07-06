@@ -93,6 +93,9 @@ void Reprojection::Initialize(ReprojectionData reprojectionData) {
     mReprojectionPipeline = unique_ptr<RenderPipeline>(
             new RenderPipeline({mInputSurface, mMotionVector.get()}, QUAD_2D_VERTEX_SHADER,
                                ReprojectionShaderStr, 4));
+
+    mTargetTime = 0;
+    mRefTime = 0;
 }
 
 void Reprojection::AddFrame(ovrTracking2 *tracking, uint64_t renderTime) {
@@ -106,8 +109,8 @@ void Reprojection::AddFrame(ovrTracking2 *tracking, uint64_t renderTime) {
 }
 
 void Reprojection::EstimateMotion() {
-    glTexEstimateMotionQCOM(mTargetTexture->GetGLTexture(), mRefTexture->GetGLTexture(), mMotionVector->GetGLTexture());
 // reversed inputs to TexEstimateMotionQCOM so the starting position doesnt need to be corrected
+    glTexEstimateMotionQCOM(mTargetTexture->GetGLTexture(), mRefTexture->GetGLTexture(), mMotionVector->GetGLTexture());
 }
 
 void Reprojection::Reproject(uint64_t displayTime) {
