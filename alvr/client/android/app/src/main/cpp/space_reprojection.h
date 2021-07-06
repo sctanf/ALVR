@@ -1,5 +1,6 @@
 #pragma once
 
+#include <VrApi_Types.h>
 #include <memory>
 #include <vector>
 
@@ -12,31 +13,38 @@ struct ReprojectionData {
     uint32_t eyeHeight;
 };
 
-struct ReprojectionFrame {
-    gl_render_utils::Texture *texture;
-    gl_render_utils::RenderState *state;
-    ovrTracking2 *tracking;
-    uint64_t time;
-};
-
 class Reprojection {
 public:
     Reprojection(gl_render_utils::Texture *mInputSurface);
 
+    void Initialize(ReprojectionData reprojectionData);
+
     void AddFrame(ovrTracking2 *tracking, uint64_t renderTime);
+
+    void EstimateMotion();
+
+    void Reproject(uint64_t displayTime);
+
+    void Render();
 
 private:
 
     gl_render_utils::Texture *mInputSurface;
 
-    ReprojectionFrame *mFrameTarget;
-    ReprojectionFrame *mFrameRef;
+    std::unique_ptr<gl_render_utils::Texture> mTargetTexture;
+    std::unique_ptr<gl_render_utils::RenderState> mTargetState;
+    ovrTracking2 *mTargetTracking;
+    uint64_t mTargetTime;
+
+    std::unique_ptr<gl_render_utils::Texture> mRefTexture;
+    std::unique_ptr<gl_render_utils::RenderState> mRefState;
+    ovrTracking2 *mRefTracking;
+    uint64_t mRefTime;
+
     std::unique_ptr<gl_render_utils::RenderPipeline> mRGBtoLuminancePipeline;
     std::unique_ptr<gl_render_utils::RenderPipeline> mCopyPipeline;
 
     std::unique_ptr<gl_render_utils::Texture> mMotionVector;
-    std::unique_ptr<gl_render_utils::RenderState> mMotionVectorState;
-    std::unique_ptr<gl_render_utils::RenderPipeline> mMotionEstimationPipeline;
 
     std::unique_ptr<gl_render_utils::Texture> mReprojectedTexture;
     std::unique_ptr<gl_render_utils::RenderState> mReprojectedTextureState;

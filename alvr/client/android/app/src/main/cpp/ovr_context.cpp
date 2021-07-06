@@ -608,7 +608,7 @@ OnResumeResult onResumeNative(void *v_surface, bool darkMode) {
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wmissing-field-initializers"
     ovrRenderer_Create(&g_ctx.Renderer, eyeWidth, eyeHeight, g_ctx.streamTexture.get(),
-                       g_ctx.loadingTexture, {false});
+                       g_ctx.loadingTexture, {false}, {false});
 #pragma clang diagnostic pop
 
     ovrRenderer_CreateScene(&g_ctx.Renderer, darkMode);
@@ -847,8 +847,9 @@ void renderNative(long long renderedFrameIndex) {
     const ovrLayerProjection2 worldLayer =
             ovrRenderer_RenderFrame(&g_ctx.Renderer, &frame->tracking, false);
 
+// Send uncompressed frame to reprojection
     if (g_ctx.Renderer.enableReprojection) {
-        g_ctx.Renderer.reprojection->AddFrame(&frame->tracking, GetTimestampUs());
+        g_ctx.Renderer.reprojection->AddFrame(&frame->tracking, getTimestampUs());
     }
 
     LatencyCollector::Instance().rendered2(renderedFrameIndex);
@@ -871,6 +872,11 @@ void renderNative(long long renderedFrameIndex) {
     LatencyCollector::Instance().submit(renderedFrameIndex);
     // TimeSync here might be an issue but it seems to work fine
     sendTimeSync();
+
+// Run motion estimation
+    if (g_ctx.Renderer.enableReprojection) {
+        g_ctx.Renderer.reprojection->EstimateMotion();
+    }
 
     FrameLog(renderedFrameIndex, "vrapi_SubmitFrame2 Orientation=(%f, %f, %f, %f)",
              frame->tracking.HeadPose.Pose.Orientation.x,

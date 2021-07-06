@@ -147,7 +147,7 @@ typedef struct {
 
 void ovrRenderer_Create(ovrRenderer *renderer, int width, int height,
                         gl_render_utils::Texture *streamTexture, int LoadingTexture,
-                        FFRData ffrData);
+                        FFRData ffrData, ReprojectionData reprojectionData);
 
 void ovrRenderer_Destroy(ovrRenderer *renderer);
 

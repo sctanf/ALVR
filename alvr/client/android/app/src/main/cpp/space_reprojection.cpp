@@ -36,28 +36,18 @@ namespace {
         }
     )glsl";
 
-    const string MOTION_ESTIMATION_FRAGMENT_SHADER = R"glsl(
-        uniform samplerExternalOES tex0, tex1;
-        in vec2 uv;
-        out vec4 color;
-        void main() {
-            color.width = tex0.width / MOTION_ESTIMATION_SEARCH_BLOCK_X_QCOM;
-            color.height = tex0.height / MOTION_ESTIMATION_SEARCH_BLOCK_Y_QCOM;
-            TexEstimateMotionQCOM(tex1, tex0, color);
-        }
-    )glsl";
-// reversed inputs to TexEstimateMotionQCOM so the starting position doesnt need to be corrected
-
     const string REPROJECTION_FRAGMENT_SHADER = R"glsl(
         uniform samplerExternalOES tex0, tex1;
+        uniform magnitude{
+            highp float magnitude
+        }
         in vec2 uv;
         out vec4 color;
         void main() {
-            uv += texture(tex1, uv).rg * -1. * .5;
+            uv += texture(tex1, uv).rg * -1. * magnitude.magnitude;
             color = texture(tex0, uv);
         }
     )glsl";
-// how to resize the motion vectors?
 //uv -= texture(tex1, uv).rg;
 }
 
@@ -69,13 +59,13 @@ Reprojection::Reprojection(Texture *mInputSurface)
 void Reprojection::Initialize(ReprojectionData reprojectionData) {
     auto reprojectionCommonShaderStr = REPROJECTION_COMMON_SHADER_FORMAT;
 
-    mFrameTarget.texture.reset(
+    mTargetTexture.reset(
             new Texture(false, reprojectionData.eyeWidth * 2, reprojectionData.eyeHeight, GL_R8));
-    mFrameTarget.state = make_unique<RenderState>(mFrameTarget.texture.get());
+    mTargetState = make_unique<RenderState>(mTargetTexture.get());
 
-    mFrameRef.texture.reset(
+    mRefTexture.reset(
             new Texture(false, reprojectionData.eyeWidth * 2, reprojectionData.eyeHeight, GL_R8));
-    mFrameRef.state = make_unique<RenderState>(mFrameRef.texture.get());
+    mRefState = make_unique<RenderState>(mRefTexture.get());
 
     auto RGBtoLuminanceShaderStr = reprojectionCommonShaderStr + RGB_TO_LUMINANCE_FRAGMENT_SHADER;
     mRGBtoLuminancePipeline = unique_ptr<RenderPipeline>(
@@ -84,17 +74,11 @@ void Reprojection::Initialize(ReprojectionData reprojectionData) {
 
     auto CopyShaderStr = reprojectionCommonShaderStr + COPY_FRAGMENT_SHADER;
     mCopyPipeline = unique_ptr<RenderPipeline>(
-            new RenderPipeline({mFrameTarget}, QUAD_2D_VERTEX_SHADER,
+            new RenderPipeline({mTargetTexture.get()}, QUAD_2D_VERTEX_SHADER,
                                CopyShaderStr));
 
     mMotionVector.reset(
-            new Texture(false, reprojectionData.eyeWidth * 2, reprojectionData.eyeHeight, GL_RGBA16F));
-    mMotionVectorState = make_unique<RenderState>(mMotionVector.get());
-
-    auto MotionEstimationShaderStr = reprojectionCommonShaderStr + MOTION_ESTIMATION_FRAGMENT_SHADER;
-    mMotionEstimationPipeline = unique_ptr<RenderPipeline>(
-            new RenderPipeline({mFrameRef.texture, mFrameTarget.texture}, QUAD_2D_VERTEX_SHADER,
-                               MotionEstimationShaderStr));
+            new Texture(false, reprojectionData.eyeWidth * 2 / MOTION_ESTIMATION_SEARCH_BLOCK_X_QCOM, reprojectionData.eyeHeight / MOTION_ESTIMATION_SEARCH_BLOCK_Y_QCOM, GL_RGBA16F));
 
     mReprojectedTexture.reset(
             new Texture(false, reprojectionData.eyeWidth * 2, reprojectionData.eyeHeight, GL_RGB8));
@@ -102,28 +86,29 @@ void Reprojection::Initialize(ReprojectionData reprojectionData) {
 
     auto ReprojectionShaderStr = reprojectionCommonShaderStr + REPROJECTION_FRAGMENT_SHADER;
     mReprojectionPipeline = unique_ptr<RenderPipeline>(
-            new RenderPipeline({mInputSurface, mMotionVector}, QUAD_2D_VERTEX_SHADER,
-                               ReprojectionShaderStr));
+            new RenderPipeline({mInputSurface, mMotionVector.get()}, QUAD_2D_VERTEX_SHADER,
+                               ReprojectionShaderStr, 4));
 }
 
 void Reprojection::AddFrame(ovrTracking2 *tracking, uint64_t renderTime) {
-    mCopyPipeline->Render(mFrameRef.state);
-    mFrameRef.tracking =  mFrameTarget.tracking;
-    mFrameRef.time = mFrameTarget.time;
+    mCopyPipeline->Render(*mRefState);
+    mRefTracking =  mTargetTracking;
+    mRefTime = mTargetTime;
 
-    mRGBtoLuminancePipeline->Render(mFrameTarget.state);
-    mFrameTarget.tracking = tracking;
-    mFrameTarget.time = renderTime;
+    mRGBtoLuminancePipeline->Render(*mTargetState);
+    mTargetTracking = tracking;
+    mTargetTime = renderTime;
 }
 
 void Reprojection::EstimateMotion() {
-    mMotionEstimationPipeline->Render(mMotionVectorState);
+    TexEstimateMotionQCOM(mTargetTexture->GetGLTexture(), mRefTexture->GetGLTexture(), mMotionVector->GetGLTexture());
+// reversed inputs to TexEstimateMotionQCOM so the starting position doesnt need to be corrected
 }
 
 void Reprojection::Reproject(uint64_t displayTime) {
-    uint64_t frameDelta = mFrameTarget.time - mFrameRef.time;
-// Estimate tracking?
-    mReprojectionPipeline->Render(mReprojectedTextureState);
+	float magnitude = (double)(displayTime - mTargetTime) / (double)(mTargetTime - mRefTime);
+    mReprojectionPipeline->Render(*mReprojectedTextureState, &magnitude);
+// need to estimate tracking
 }
 
 void Reprojection::Render() {
