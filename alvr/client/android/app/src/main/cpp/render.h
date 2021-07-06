@@ -155,10 +155,10 @@ void ovrRenderer_CreateScene(ovrRenderer *renderer, bool darkMode);
 
 // Set up an OVR frame, render it, and submit it.
 ovrLayerProjection2 ovrRenderer_RenderFrame(ovrRenderer *renderer, const ovrTracking2 *tracking,
-                                            bool loading);
+                                            bool loading, bool reprojected = false);
 
 // Render the contents of the frame in an SDK-neutral manner.
 void renderEye(int eye, ovrMatrix4f mvpMatrix[2], Recti *viewport, ovrRenderer *renderer,
-               bool loading);
+               bool loading, bool reprojected = false);
 
 #endif //ALVRCLIENT_RENDER_H

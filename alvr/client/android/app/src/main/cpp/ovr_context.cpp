@@ -901,7 +901,7 @@ void renderReprojection() {
 
 // Render eye images and setup the primary layer using ovrTracking2.
         const ovrLayerProjection2 worldLayer =
-                ovrRenderer_RenderFrame(&g_ctx.Renderer, tracking, false); //need to disable ffr while reprojecting, as the image is already uncompressed
+                ovrRenderer_RenderFrame(&g_ctx.Renderer, tracking, false, true);
 
         const ovrLayerHeader2 *layers2[] =
                 {

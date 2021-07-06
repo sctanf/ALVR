@@ -713,9 +713,11 @@ void ovrRenderer_Destroy(ovrRenderer *renderer) {
 #ifdef OVR_SDK
 
 ovrLayerProjection2 ovrRenderer_RenderFrame(ovrRenderer *renderer, const ovrTracking2 *tracking,
-                                            bool loading) {
-    if (renderer->enableFFR) {
-        renderer->ffr->Render();
+                                            bool loading, bool reprojected) {
+    if (!reprojected) {
+        if (renderer->enableFFR) {
+            renderer->ffr->Render();
+        }
     }
 
     const ovrTracking2 &updatedTracking = *tracking;
@@ -757,7 +759,7 @@ ovrLayerProjection2 ovrRenderer_RenderFrame(ovrRenderer *renderer, const ovrTrac
         Recti viewport = {0, 0, (int) frameBuffer->renderTargets[0]->GetWidth(),
                           (int) frameBuffer->renderTargets[0]->GetHeight()};
 
-        renderEye(eye, mvpMatrix, &viewport, renderer, loading);
+        renderEye(eye, mvpMatrix, &viewport, renderer, loading, reprojected);
 
         ovrFramebuffer_Resolve();
         ovrFramebuffer_Advance(frameBuffer);
@@ -771,7 +773,7 @@ ovrLayerProjection2 ovrRenderer_RenderFrame(ovrRenderer *renderer, const ovrTrac
 #endif
 
 void renderEye(int eye, ovrMatrix4f mvpMatrix[2], Recti *viewport, ovrRenderer *renderer,
-               bool loading) {
+               bool loading, bool reprojected) {
     if (loading) {
         GL(glUseProgram(renderer->ProgramLoading.Program));
         if (renderer->ProgramLoading.UniformLocation[UNIFORM_VIEW_ID] >=
@@ -833,7 +835,10 @@ void renderEye(int eye, ovrMatrix4f mvpMatrix[2], Recti *viewport, ovrRenderer *
 
         GL(glUniform1f(renderer->Program.UniformLocation[UNIFORM_ALPHA], 2.0f));
         GL(glActiveTexture(GL_TEXTURE0));
-        if (renderer->enableFFR) {
+        if (reprojected) {
+            GL(glBindTexture(GL_TEXTURE_2D,
+                             renderer->reprojection->GetOutputTexture()->GetGLTexture()));
+        } else if (renderer->enableFFR) {
             GL(glBindTexture(GL_TEXTURE_2D,
                              renderer->ffr->GetOutputTexture()->GetGLTexture()));
         } else {
