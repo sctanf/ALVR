@@ -32,6 +32,8 @@ public:
 
     void Render();
 
+    gl_render_utils::Texture *GetOutputTexture() { return mReprojectedTexture.get(); }
+
 private:
 
     PFNGLTEXESTIMATEMOTIONQCOMPROC glTexEstimateMotionQCOM = (PFNGLTEXESTIMATEMOTIONQCOMPROC)eglGetProcAddress("glTexEstimateMotionQCOM");
