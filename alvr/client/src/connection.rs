@@ -415,6 +415,16 @@ async fn connection_pipeline(
         }
     };
 
+    let reprojection_interval = Duration::from_secs_f32(1_f32 / 1000_f32);
+    let reprojection_loop = async move {
+        let mut deadline = Instant::now();
+        loop {
+            unsafe { crate::renderReprojection() };
+            deadline += reprojection_interval;
+            time::sleep_until(deadline).await;
+        }
+    };
+
     unsafe impl Send for crate::GuardianData {}
     let playspace_sync_loop = {
         let control_sender = Arc::clone(&control_sender);
@@ -580,6 +590,7 @@ async fn connection_pipeline(
         res = spawn_cancelable(game_audio_loop) => res,
         res = spawn_cancelable(microphone_loop) => res,
         res = spawn_cancelable(tracking_loop) => res,
+        res = spawn_cancelable(reprojection_loop) => res,
         res = spawn_cancelable(playspace_sync_loop) => res,
         res = spawn_cancelable(legacy_send_loop) => res,
         res = spawn_cancelable(legacy_receive_loop) => res,

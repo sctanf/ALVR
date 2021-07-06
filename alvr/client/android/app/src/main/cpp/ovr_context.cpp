@@ -849,6 +849,7 @@ void renderNative(long long renderedFrameIndex) {
 
 // Send uncompressed frame to reprojection
     if (g_ctx.Renderer.enableReprojection) {
+        g_ctx.Renderer.reprojection->FrameSent();
         g_ctx.Renderer.reprojection->AddFrame(&frame->tracking, getTimestampUs());
     }
 
@@ -869,13 +870,16 @@ void renderNative(long long renderedFrameIndex) {
 
     vrapi_SubmitFrame2(g_ctx.Ovr, &frameDesc);
 
+    if (g_ctx.Renderer.enableReprojection) {
+        g_ctx.Renderer.reprojection->ResetFrameSent();
+    }
+
     LatencyCollector::Instance().submit(renderedFrameIndex);
     // TimeSync here might be an issue but it seems to work fine
     sendTimeSync();
 
 // Run motion estimation (preemptive)
     if (g_ctx.Renderer.enableReprojection) {
-        g_ctx.Renderer.reprojection->FrameSent();
         g_ctx.Renderer.reprojection->EstimateMotion();
     }
 
@@ -897,6 +901,10 @@ void renderNative(long long renderedFrameIndex) {
 
 void renderReprojection() {
     if (g_ctx.Renderer.reprojection->Render((vrapi_GetPredictedDisplayTime(g_ctx.Ovr, g_ctx.FrameIndex) - vrapi_GetTimeInSeconds()) * 1000000)) {
+        g_ctx.Renderer.reprojection->FrameSent();
+ 
+        g_ctx.FrameIndex++;
+
         ovrTracking2 *tracking = g_ctx.Renderer.reprojection->GetOutputTracking();
 
 // Render eye images and setup the primary layer using ovrTracking2.
@@ -918,7 +926,7 @@ void renderReprojection() {
 
         vrapi_SubmitFrame2(g_ctx.Ovr, &frameDesc);
 
-        g_ctx.Renderer.reprojection->FrameSent();
+        g_ctx.Renderer.reprojection->ResetFrameSent();
     }
 }
 

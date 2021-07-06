@@ -48,6 +48,7 @@ extern "C" void decoderOutput(long long frameIndex);
 extern "C" OnCreateResult onCreate(void *env, void *activity, void *assetManager);
 extern "C" void destroyNative(void *env);
 extern "C" void renderNative(long long renderedFrameIndex);
+extern "C" void renderReprojection();
 extern "C" void renderLoadingNative();
 extern "C" void onTrackingNative(bool clientsidePrediction);
 extern "C" OnResumeResult onResumeNative(void *surface, bool darkMode);

@@ -136,8 +136,13 @@ bool Reprojection::Render(uint64_t deltaTime) {
         Reprojection::Reproject(getTimestampUs() + deltaTime);
         return true;
     }
+    return false;
 }
 
 void Reprojection::FrameSent() {
-    frameSent = true; //need to set to false right after vsync
+    frameSent = true;
+}
+
+void Reprojection::ResetFrameSent() {
+    frameSent = false;
 }

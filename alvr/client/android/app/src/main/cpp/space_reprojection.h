@@ -45,9 +45,9 @@ public:
     bool Render(uint64_t deltaTime);
 
     void FrameSent();
+    void ResetFrameSent();
 
     gl_render_utils::Texture *GetOutputTexture() { return mReprojectedTexture.get(); }
-
     ovrTracking2 *GetOutputTracking() { return mReprojectedTracking; }
 
 private:
