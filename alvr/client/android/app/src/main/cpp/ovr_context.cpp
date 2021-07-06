@@ -875,7 +875,7 @@ void renderNative(long long renderedFrameIndex) {
 
 // Run motion estimation (preemptive)
     if (g_ctx.Renderer.enableReprojection) {
-        g_ctx.Renderer.reprojection->Reset();
+        g_ctx.Renderer.reprojection->FrameSent();
         g_ctx.Renderer.reprojection->EstimateMotion();
     }
 
@@ -911,13 +911,14 @@ void renderReprojection() {
         ovrSubmitFrameDescription2 frameDesc = {};
         frameDesc.Flags = 0;
         frameDesc.SwapInterval = 1;
-        //frameDesc.FrameIndex = renderedFrameIndex;
         frameDesc.FrameIndex = g_ctx.FrameIndex;
         frameDesc.DisplayTime = 0.0;
         frameDesc.LayerCount = 1;
         frameDesc.Layers = layers2;
 
         vrapi_SubmitFrame2(g_ctx.Ovr, &frameDesc);
+
+        g_ctx.Renderer.reprojection->FrameSent();
     }
 }
 

@@ -128,22 +128,16 @@ void Reprojection::Reproject(uint64_t displayTime) {
     mReprojectedTracking->HeadPose.Pose.Orientation = Slerp(mRefTracking->HeadPose.Pose.Orientation, mTargetTracking->HeadPose.Pose.Orientation, 1 + magnitude);
 }
 
-//make sure to only call once, right before vsync happens
 bool Reprojection::Render(uint64_t deltaTime) {
     if (emptyFrames > 0) return false;
-    if (!frameSent) {
-        const uint64_t currentTimeUs = getTimestampUs();
-        //if (deltaTime < 2000) {
-            // Less than 2ms remaining, submit a frame now
-            Reprojection::Reproject(currentTimeUs + deltaTime);
-            //need to submit the reprojected frame
-        //}
+    if (frameSent) return false;
+    if (deltaTime < 2000) {
+        // Less than 2ms remaining
+        Reprojection::Reproject(getTimestampUs() + deltaTime);
         return true;
     }
-    frameSent = false;
-    return false;
 }
 
-void Reprojection::Reset() {
-    frameSent = true; //need to set to false after vsync
+void Reprojection::FrameSent() {
+    frameSent = true; //need to set to false right after vsync
 }

@@ -44,7 +44,7 @@ public:
 
     bool Render(uint64_t deltaTime);
 
-    void Reset();
+    void FrameSent();
 
     gl_render_utils::Texture *GetOutputTexture() { return mReprojectedTexture.get(); }
 
