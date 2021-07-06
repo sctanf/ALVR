@@ -44,10 +44,10 @@ namespace {
         out vec4 color;
         void main() {
             uv += texture(tex1, uv).rg * -1. * magnitude.magnitude;
+            //uv -= texture(tex1, uv).rg * magnitude.magnitude;
             color = texture(tex0, uv);
         }
     )glsl";
-//uv -= texture(tex1, uv).rg;
 }
 
 
