@@ -1,7 +1,5 @@
 #include "space_reprojection.h"
 
-#define GL_GLEXT_PROTOTYPES
-
 #include <cmath>
 #include <memory>
 

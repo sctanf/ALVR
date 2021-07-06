@@ -1,6 +1,7 @@
 #pragma once
 
-#define GL_GLEXT_PROTOTYPES
+#include <EGL/egl.h>
+
 #include <GLES3/gl3.h>
 #include <GLES2/gl2ext.h>
 
@@ -32,6 +33,8 @@ public:
     void Render();
 
 private:
+
+    PFNGLTEXESTIMATEMOTIONQCOMPROC glTexEstimateMotionQCOM = (PFNGLTEXESTIMATEMOTIONQCOMPROC)eglGetProcAddress("glTexEstimateMotionQCOM");
 
     gl_render_utils::Texture *mInputSurface;
 
