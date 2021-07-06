@@ -28,6 +28,7 @@
 #include <inttypes.h>
 #include <glm/gtx/euler_angles.hpp>
 #include <mutex>
+#include "space_reprojection.h"
 
 using namespace std;
 using namespace gl_render_utils;
@@ -651,7 +652,9 @@ void onStreamStartNative() {
                        {g_ctx.streamConfig.enableFoveation, g_ctx.streamConfig.eyeWidth,
                         g_ctx.streamConfig.eyeHeight, EyeFov(),
                         g_ctx.streamConfig.foveationStrength, g_ctx.streamConfig.foveationShape,
-                        g_ctx.streamConfig.foveationVerticalOffset});
+                        g_ctx.streamConfig.foveationVerticalOffset},
+                       {true, g_ctx.streamConfig.eyeWidth,
+                        g_ctx.streamConfig.eyeHeight}); // hardcode reprojection for now
     ovrRenderer_CreateScene(&g_ctx.Renderer, g_ctx.darkMode);
 
     // On Oculus Quest, without ExtraLatencyMode frames passed to vrapi_SubmitFrame2 are sometimes discarded from VrAPI(?).
@@ -843,6 +846,10 @@ void renderNative(long long renderedFrameIndex) {
 // Render eye images and setup the primary layer using ovrTracking2.
     const ovrLayerProjection2 worldLayer =
             ovrRenderer_RenderFrame(&g_ctx.Renderer, &frame->tracking, false);
+
+    if (g_ctx.Renderer.enableReprojection) {
+        g_ctx.Renderer.reprojection->AddFrame(&frame->tracking, GetTimestampUs());
+    }
 
     LatencyCollector::Instance().rendered2(renderedFrameIndex);
 

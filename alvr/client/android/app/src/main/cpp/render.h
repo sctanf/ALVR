@@ -12,6 +12,7 @@
 #include "gltf_model.h"
 #include "utils.h"
 #include "ffr.h"
+#include "space_reprojection.h"
 #include "vr_gui.h"
 
 
@@ -140,6 +141,8 @@ typedef struct {
     std::unique_ptr<FFR> ffr;
     gl_render_utils::Texture *ffrSourceTexture;
     bool enableFFR;
+    std::unique_ptr<Reprojection> reprojection;
+    bool enableReprojection;
 } ovrRenderer;
 
 void ovrRenderer_Create(ovrRenderer *renderer, int width, int height,

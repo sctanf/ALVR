@@ -642,7 +642,7 @@ void ovrProgram_Destroy(ovrProgram *program) {
 //
 
 void ovrRenderer_Create(ovrRenderer *renderer, int width, int height, Texture *streamTexture,
-                        int LoadingTexture, FFRData ffrData) {
+                        int LoadingTexture, FFRData ffrData, ReprojectionData reprojectionData) {
     renderer->NumBuffers = VRAPI_FRAME_LAYER_EYE_MAX;
 
     renderer->enableFFR = ffrData.enabled;
@@ -650,6 +650,12 @@ void ovrRenderer_Create(ovrRenderer *renderer, int width, int height, Texture *s
         renderer->ffrSourceTexture = streamTexture;
         renderer->ffr = std::make_unique<FFR>(renderer->ffrSourceTexture);
         renderer->ffr->Initialize(ffrData);
+    }
+
+    renderer->enableReprojection = reprojectionData.enabled;
+    if (renderer->enableReprojection) {
+        renderer->reprojection = std::make_unique<Reprojection>(streamTexture);
+        renderer->reprojection->Initialize(reprojectionData);
     }
 
 #ifdef OVR_SDK
