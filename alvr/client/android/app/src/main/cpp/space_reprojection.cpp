@@ -88,7 +88,7 @@ void Reprojection::Initialize(ReprojectionData reprojectionData) {
 
     auto ReprojectionShaderStr = reprojectionCommonShaderStr + REPROJECTION_FRAGMENT_SHADER;
     mReprojectionPipeline = unique_ptr<RenderPipeline>(
-            new RenderPipeline({mTargetTexture.get(), mMotionVector.get()}, QUAD_2D_VERTEX_SHADER,
+            new RenderPipeline({mInputSurface, mMotionVector.get()}, QUAD_2D_VERTEX_SHADER,
                                ReprojectionShaderStr, 4));
 
     mTargetTracking = new ovrTracking2;
@@ -114,7 +114,6 @@ void Reprojection::AddFrame(ovrTracking2 *tracking, uint64_t renderTime) {
 
     mTargetState->ClearDepth();
     mRGBtoLuminancePipeline->Render(*mTargetState);
-    mTargetTracking = tracking;
     memcpy(mTargetTracking, tracking, sizeof(ovrTracking2));
     memcpy(mReprojectedTracking, tracking, sizeof(ovrTracking2));
     mTargetTime = renderTime;
