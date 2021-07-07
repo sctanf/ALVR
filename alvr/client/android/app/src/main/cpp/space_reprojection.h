@@ -28,6 +28,7 @@ struct ReprojectionData {
     bool enabled;
     uint32_t eyeWidth;
     uint32_t eyeHeight;
+    float refreshRate;
 };
 
 class Reprojection {
@@ -42,8 +43,9 @@ public:
 
     void Reproject(uint64_t displayTime);
 
-    bool Render(uint64_t deltaTime);
+    bool Render(uint64_t current);
 
+    bool GetFrameSent();
     void FrameSent();
     void ResetFrameSent();
 
@@ -52,6 +54,10 @@ public:
 
 private:
 
+    float refreshRate;
+    uint64_t frameTime;
+    uint64_t lastSubmit;
+    uint64_t displayTime;
     uint32_t emptyFrames;
     bool frameSent;
 

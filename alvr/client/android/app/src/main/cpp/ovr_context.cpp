@@ -654,7 +654,7 @@ void onStreamStartNative() {
                         g_ctx.streamConfig.foveationStrength, g_ctx.streamConfig.foveationShape,
                         g_ctx.streamConfig.foveationVerticalOffset},
                        {true, g_ctx.streamConfig.eyeWidth,
-                        g_ctx.streamConfig.eyeHeight}); // hardcode reprojection for now
+                        g_ctx.streamConfig.eyeHeight, g_ctx.streamConfig.refreshRate}); // hardcode reprojection for now
     ovrRenderer_CreateScene(&g_ctx.Renderer, g_ctx.darkMode);
 
     // On Oculus Quest, without ExtraLatencyMode frames passed to vrapi_SubmitFrame2 are sometimes discarded from VrAPI(?).
@@ -848,68 +848,17 @@ void renderNative(long long renderedFrameIndex) {
             ovrRenderer_RenderFrame(&g_ctx.Renderer, &frame->tracking, false);
 
 // Send uncompressed frame to reprojection
+    bool frameSent = false;
     if (g_ctx.Renderer.enableReprojection) {
-        g_ctx.Renderer.reprojection->FrameSent();
+        frameSent = g_ctx.Renderer.reprojection->GetFrameSent();
         g_ctx.Renderer.reprojection->AddFrame(&frame->tracking, getTimestampUs());
     }
-
-    LatencyCollector::Instance().rendered2(renderedFrameIndex);
-
-    const ovrLayerHeader2 *layers2[] =
-            {
-                    &worldLayer.Header
-            };
-
-    ovrSubmitFrameDescription2 frameDesc = {};
-    frameDesc.Flags = 0;
-    frameDesc.SwapInterval = 1;
-    frameDesc.FrameIndex = renderedFrameIndex;
-    frameDesc.DisplayTime = 0.0;
-    frameDesc.LayerCount = 1;
-    frameDesc.Layers = layers2;
-
-    vrapi_SubmitFrame2(g_ctx.Ovr, &frameDesc);
-
-    if (g_ctx.Renderer.enableReprojection) {
-        g_ctx.Renderer.reprojection->ResetFrameSent();
-    }
-
-    LatencyCollector::Instance().submit(renderedFrameIndex);
-    // TimeSync here might be an issue but it seems to work fine
-    sendTimeSync();
-
-// Run motion estimation (preemptive)
-    if (g_ctx.Renderer.enableReprojection) {
-        g_ctx.Renderer.reprojection->EstimateMotion();
-    }
-
-    FrameLog(renderedFrameIndex, "vrapi_SubmitFrame2 Orientation=(%f, %f, %f, %f)",
-             frame->tracking.HeadPose.Pose.Orientation.x,
-             frame->tracking.HeadPose.Pose.Orientation.y,
-             frame->tracking.HeadPose.Pose.Orientation.z,
-             frame->tracking.HeadPose.Pose.Orientation.w
-    );
-
-    if (g_ctx.suspend) {
-        LOG("submit enter suspend");
-        while (g_ctx.suspend) {
-            usleep(1000 * 10);
+    if (!frameSent) {
+        if (g_ctx.Renderer.enableReprojection) {
+            g_ctx.Renderer.reprojection->FrameSent();
         }
-        LOG("submit leave suspend");
-    }
-}
 
-void renderReprojection() {
-    if (g_ctx.Renderer.reprojection->Render((vrapi_GetPredictedDisplayTime(g_ctx.Ovr, g_ctx.FrameIndex) - vrapi_GetTimeInSeconds()) * 1000000)) {
-        g_ctx.Renderer.reprojection->FrameSent();
- 
-        g_ctx.FrameIndex++;
-
-        ovrTracking2 *tracking = g_ctx.Renderer.reprojection->GetOutputTracking();
-
-// Render eye images and setup the primary layer using ovrTracking2.
-        const ovrLayerProjection2 worldLayer =
-                ovrRenderer_RenderFrame(&g_ctx.Renderer, tracking, false, true);
+        LatencyCollector::Instance().rendered2(renderedFrameIndex);
 
         const ovrLayerHeader2 *layers2[] =
                 {
@@ -919,14 +868,75 @@ void renderReprojection() {
         ovrSubmitFrameDescription2 frameDesc = {};
         frameDesc.Flags = 0;
         frameDesc.SwapInterval = 1;
-        frameDesc.FrameIndex = g_ctx.FrameIndex;
+        frameDesc.FrameIndex = renderedFrameIndex;
         frameDesc.DisplayTime = 0.0;
         frameDesc.LayerCount = 1;
         frameDesc.Layers = layers2;
 
         vrapi_SubmitFrame2(g_ctx.Ovr, &frameDesc);
 
-        g_ctx.Renderer.reprojection->ResetFrameSent();
+        if (g_ctx.Renderer.enableReprojection) {
+            g_ctx.Renderer.reprojection->ResetFrameSent();
+        }
+
+        LatencyCollector::Instance().submit(renderedFrameIndex);
+        // TimeSync here might be an issue but it seems to work fine
+        sendTimeSync();
+
+// Run motion estimation (preemptive)
+        if (g_ctx.Renderer.enableReprojection) {
+            g_ctx.Renderer.reprojection->EstimateMotion();
+        }
+
+        FrameLog(renderedFrameIndex, "vrapi_SubmitFrame2 Orientation=(%f, %f, %f, %f)",
+                 frame->tracking.HeadPose.Pose.Orientation.x,
+                 frame->tracking.HeadPose.Pose.Orientation.y,
+                 frame->tracking.HeadPose.Pose.Orientation.z,
+                 frame->tracking.HeadPose.Pose.Orientation.w
+        );
+
+        if (g_ctx.suspend) {
+            LOG("submit enter suspend");
+            while (g_ctx.suspend) {
+                usleep(1000 * 10);
+            }
+            LOG("submit leave suspend");
+        }
+    }
+}
+
+void renderReprojection() {
+    if (g_ctx.Renderer.enableReprojection) {
+        if (g_ctx.Renderer.reprojection->Render(getTimestampUs())) {
+            if (!g_ctx.Renderer.reprojection->GetFrameSent()) {
+                g_ctx.Renderer.reprojection->FrameSent();
+ 
+                g_ctx.FrameIndex++;
+
+                ovrTracking2 *tracking = g_ctx.Renderer.reprojection->GetOutputTracking();
+
+// Render eye images and setup the primary layer using ovrTracking2.
+                const ovrLayerProjection2 worldLayer =
+                        ovrRenderer_RenderFrame(&g_ctx.Renderer, tracking, false, true);
+
+                const ovrLayerHeader2 *layers2[] =
+                        {
+                            &worldLayer.Header
+                        };
+
+                ovrSubmitFrameDescription2 frameDesc = {};
+                frameDesc.Flags = 0;
+                frameDesc.SwapInterval = 1;
+                frameDesc.FrameIndex = g_ctx.FrameIndex;
+                frameDesc.DisplayTime = 0.0;
+                frameDesc.LayerCount = 1;
+                frameDesc.Layers = layers2;
+
+                vrapi_SubmitFrame2(g_ctx.Ovr, &frameDesc);
+
+                g_ctx.Renderer.reprojection->ResetFrameSent();
+			}
+        }
     }
 }
 

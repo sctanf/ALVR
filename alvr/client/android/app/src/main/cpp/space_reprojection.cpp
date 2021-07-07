@@ -88,28 +88,35 @@ void Reprojection::Initialize(ReprojectionData reprojectionData) {
 
     auto ReprojectionShaderStr = reprojectionCommonShaderStr + REPROJECTION_FRAGMENT_SHADER;
     mReprojectionPipeline = unique_ptr<RenderPipeline>(
-            new RenderPipeline({mInputSurface, mMotionVector.get()}, QUAD_2D_VERTEX_SHADER,
+            new RenderPipeline({mTargetTexture.get(), mMotionVector.get()}, QUAD_2D_VERTEX_SHADER,
                                ReprojectionShaderStr, 4));
+
+    mTargetTracking = new ovrTracking2;
+    mRefTracking = new ovrTracking2;
+    mReprojectedTracking = new ovrTracking2;
 
     mTargetTime = 0;
     mRefTime = 0;
+    refreshRate = reprojectionData.refreshRate;
+    frameTime = 1e6 / refreshRate;
+    lastSubmit = getTimestampUs();
     emptyFrames = 2;
     frameSent = false;
 }
 
 void Reprojection::AddFrame(ovrTracking2 *tracking, uint64_t renderTime) {
     if (emptyFrames < 2) {
+        mRefState->ClearDepth();
         mCopyPipeline->Render(*mRefState);
-        mRefTracking = mTargetTracking;
-        //memcpy(mRefTracking, mTargetTracking, sizeof(ovrTracking2));
+        memcpy(mRefTracking, mTargetTracking, sizeof(ovrTracking2));
         mRefTime = mTargetTime;
     }
 
+    mTargetState->ClearDepth();
     mRGBtoLuminancePipeline->Render(*mTargetState);
     mTargetTracking = tracking;
-    mReprojectedTracking = tracking;
-    //memcpy(mTargetTracking, tracking, sizeof(ovrTracking2));
-    //memcpy(mReprojectedTracking, tracking, sizeof(ovrTracking2));
+    memcpy(mTargetTracking, tracking, sizeof(ovrTracking2));
+    memcpy(mReprojectedTracking, tracking, sizeof(ovrTracking2));
     mTargetTime = renderTime;
 
     if (emptyFrames > 0) emptyFrames--;
@@ -122,26 +129,29 @@ void Reprojection::EstimateMotion() {
 }
 
 void Reprojection::Reproject(uint64_t displayTime) {
-    LOGI("Start Reproject");
     if (emptyFrames > 0) return;
     float magnitude = (double)(displayTime - mTargetTime) / (double)(mTargetTime - mRefTime);
 
+    mReprojectedTextureState->ClearDepth();
     mReprojectionPipeline->Render(*mReprojectedTextureState, &magnitude);
 
     mReprojectedTracking->HeadPose.Pose.Orientation = Slerp(mRefTracking->HeadPose.Pose.Orientation, mTargetTracking->HeadPose.Pose.Orientation, 1 + magnitude);
-    LOGI("Finish Reproject");
 }
 
-bool Reprojection::Render(uint64_t deltaTime) {
-    if (emptyFrames > 0) return false;
-    if (frameSent) return false;
-    if (deltaTime < 2000) {
-        LOGI("Rendering Reprojection");
-        // Less than 2ms remaining
-        Reprojection::Reproject(getTimestampUs() + deltaTime);
-        return true;
+bool Reprojection::Render(uint64_t current) {
+    if (current < displayTime && emptyFrames == 0 && !frameSent) {
+        uint64_t deltaTime = displayTime - current;
+        if (deltaTime < 2000) {
+            // Less than 2ms remaining
+            Reprojection::Reproject(displayTime);
+            return true;
+        }
     }
     return false;
+}
+
+bool Reprojection::GetFrameSent() {
+    return frameSent;
 }
 
 void Reprojection::FrameSent() {
@@ -149,5 +159,7 @@ void Reprojection::FrameSent() {
 }
 
 void Reprojection::ResetFrameSent() {
+    lastSubmit = getTimestampUs();
+    displayTime = lastSubmit + frameTime;
     frameSent = false;
 }
