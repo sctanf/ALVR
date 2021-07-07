@@ -142,6 +142,7 @@ typedef struct {
     gl_render_utils::Texture *ffrSourceTexture;
     bool enableFFR;
     std::unique_ptr<Reprojection> reprojection;
+    gl_render_utils::Texture *reprojectionSourceTexture;
     bool enableReprojection;
 } ovrRenderer;
 
