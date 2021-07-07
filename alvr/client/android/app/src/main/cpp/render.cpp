@@ -654,7 +654,11 @@ void ovrRenderer_Create(ovrRenderer *renderer, int width, int height, Texture *s
 
     renderer->enableReprojection = reprojectionData.enabled;
     if (renderer->enableReprojection) {
-        renderer->reprojection = std::make_unique<Reprojection>(streamTexture);
+        if (renderer->enableFFR) {
+            renderer->reprojection = std::make_unique<Reprojection>(renderer->ffr->GetOutputTexture());
+        } else {
+            renderer->reprojection = std::make_unique<Reprojection>(streamTexture);
+        }
         renderer->reprojection->Initialize(reprojectionData);
     }
 
