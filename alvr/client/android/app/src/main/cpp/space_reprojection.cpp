@@ -20,16 +20,16 @@ namespace {
     const string COPY_FRAGMENT_SHADER = R"glsl(
         uniform samplerExternalOES tex0;
         in vec2 uv;
-        out vec1 color;
+        out float color;
         void main() {
-            color = texture(tex0, uv);
+            color = texture(tex0, uv).r;
         }
     )glsl";
 
     const string RGB_TO_LUMINANCE_FRAGMENT_SHADER = R"glsl(
         uniform samplerExternalOES tex0;
         in vec2 uv;
-        out vec1 color;
+        out float color;
         void main() {
             color = rgb_2_yuv(texture(tex0, uv).rgb, itu_601_full_range).r;
         }
@@ -37,15 +37,14 @@ namespace {
 
     const string REPROJECTION_FRAGMENT_SHADER = R"glsl(
         uniform samplerExternalOES tex0, tex1;
-        uniform magnitude{
-            highp float magnitude
-        }
+        uniform blockData {
+            highp float magnitude;
+        };
         in vec2 uv;
-        out vec4 color;
+        out vec3 color;
         void main() {
-            uv += texture(tex1, uv).rg * -1. * magnitude.magnitude;
-            //uv -= texture(tex1, uv).rg * magnitude.magnitude;
-            color = texture(tex0, uv);
+            vec2 warp = uv + texture(tex1, uv).rg * -1. * magnitude;
+            color = texture(tex0, warp).rgb;
         }
     )glsl";
 }
@@ -99,15 +98,18 @@ void Reprojection::Initialize(ReprojectionData reprojectionData) {
 }
 
 void Reprojection::AddFrame(ovrTracking2 *tracking, uint64_t renderTime) {
-    mCopyPipeline->Render(*mRefState);
-    //mRefTracking = mTargetTracking;
-    memcpy(mRefTracking, mTargetTracking, sizeof(ovrTracking2));
-    mRefTime = mTargetTime;
+    if (emptyFrames < 2) {
+        mCopyPipeline->Render(*mRefState);
+        mRefTracking = mTargetTracking;
+        //memcpy(mRefTracking, mTargetTracking, sizeof(ovrTracking2));
+        mRefTime = mTargetTime;
+    }
 
     mRGBtoLuminancePipeline->Render(*mTargetState);
-    //mTargetTracking = tracking;
-    memcpy(mTargetTracking, tracking, sizeof(ovrTracking2));
-    memcpy(mReprojectedTracking, tracking, sizeof(ovrTracking2));
+    mTargetTracking = tracking;
+    mReprojectedTracking = tracking;
+    //memcpy(mTargetTracking, tracking, sizeof(ovrTracking2));
+    //memcpy(mReprojectedTracking, tracking, sizeof(ovrTracking2));
     mTargetTime = renderTime;
 
     if (emptyFrames > 0) emptyFrames--;
@@ -120,18 +122,21 @@ void Reprojection::EstimateMotion() {
 }
 
 void Reprojection::Reproject(uint64_t displayTime) {
+    LOGI("Start Reproject");
     if (emptyFrames > 0) return;
     float magnitude = (double)(displayTime - mTargetTime) / (double)(mTargetTime - mRefTime);
 
     mReprojectionPipeline->Render(*mReprojectedTextureState, &magnitude);
 
     mReprojectedTracking->HeadPose.Pose.Orientation = Slerp(mRefTracking->HeadPose.Pose.Orientation, mTargetTracking->HeadPose.Pose.Orientation, 1 + magnitude);
+    LOGI("Finish Reproject");
 }
 
 bool Reprojection::Render(uint64_t deltaTime) {
     if (emptyFrames > 0) return false;
     if (frameSent) return false;
     if (deltaTime < 2000) {
+        LOGI("Rendering Reprojection");
         // Less than 2ms remaining
         Reprojection::Reproject(getTimestampUs() + deltaTime);
         return true;
