@@ -61,14 +61,14 @@ void Reprojection::Initialize(ReprojectionData reprojectionData) {
             new Texture(false, reprojectionData.eyeWidth * 2, reprojectionData.eyeHeight, GL_R8));
     mTargetState = make_unique<RenderState>(mTargetTexture.get());
 
-    mRefTexture.reset(
-            new Texture(false, reprojectionData.eyeWidth * 2, reprojectionData.eyeHeight, GL_R8));
-    mRefState = make_unique<RenderState>(mRefTexture.get());
-
     auto RGBtoLuminanceShaderStr = reprojectionCommonShaderStr + RGB_TO_LUMINANCE_FRAGMENT_SHADER;
     mRGBtoLuminancePipeline = unique_ptr<RenderPipeline>(
             new RenderPipeline({mInputSurface}, QUAD_2D_VERTEX_SHADER,
                                RGBtoLuminanceShaderStr));
+
+    mRefTexture.reset(
+            new Texture(false, reprojectionData.eyeWidth * 2, reprojectionData.eyeHeight, GL_R8));
+    mRefState = make_unique<RenderState>(mRefTexture.get());
 
     auto CopyShaderStr = reprojectionCommonShaderStr + COPY_FRAGMENT_SHADER;
     mCopyPipeline = unique_ptr<RenderPipeline>(
