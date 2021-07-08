@@ -842,7 +842,7 @@ void renderEye(int eye, ovrMatrix4f mvpMatrix[2], Recti *viewport, ovrRenderer *
         GL(glActiveTexture(GL_TEXTURE0));
         if (reprojected) {
             GL(glBindTexture(GL_TEXTURE_2D,
-                             renderer->reprojection->GetOutputTexture()->GetGLTexture()));
+                             renderer->ffr->GetOutputTexture()->GetGLTexture()));
         } else if (renderer->enableFFR) {
             GL(glBindTexture(GL_TEXTURE_2D,
                              renderer->ffr->GetOutputTexture()->GetGLTexture()));

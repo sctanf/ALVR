@@ -43,7 +43,7 @@ public:
 
     void Reproject(uint64_t displayTime);
 
-    bool Render(uint64_t current);
+    bool Check(uint64_t current);
 
     bool GetFrameSent();
     void FrameSent();
@@ -65,24 +65,31 @@ private:
     PFNGLTEXESTIMATEMOTIONQCOMPROC glTexEstimateMotionQCOM = (PFNGLTEXESTIMATEMOTIONQCOMPROC)eglGetProcAddress("glTexEstimateMotionQCOM");
 
     gl_render_utils::Texture *mInputSurface;
+    std::unique_ptr<gl_render_utils::RenderState> mInputSurfaceState;
+
+    std::unique_ptr<gl_render_utils::Texture> mInputTexture;
+    std::unique_ptr<gl_render_utils::RenderState> mInputState;
+
+    std::unique_ptr<gl_render_utils::RenderPipeline> mCopyInputPipeline;
 
     std::unique_ptr<gl_render_utils::Texture> mTargetTexture;
     std::unique_ptr<gl_render_utils::RenderState> mTargetState;
     ovrTracking2 *mTargetTracking;
     uint64_t mTargetTime;
 
+    std::unique_ptr<gl_render_utils::RenderPipeline> mRGBtoLuminancePipeline;
+
     std::unique_ptr<gl_render_utils::Texture> mRefTexture;
     std::unique_ptr<gl_render_utils::RenderState> mRefState;
     ovrTracking2 *mRefTracking;
     uint64_t mRefTime;
 
-    std::unique_ptr<gl_render_utils::RenderPipeline> mRGBtoLuminancePipeline;
     std::unique_ptr<gl_render_utils::RenderPipeline> mCopyPipeline;
 
     std::unique_ptr<gl_render_utils::Texture> mMotionVector;
 
     std::unique_ptr<gl_render_utils::Texture> mReprojectedTexture;
-    std::unique_ptr<gl_render_utils::RenderState> mReprojectedTextureState;
+    std::unique_ptr<gl_render_utils::RenderState> mReprojectedState;
     std::unique_ptr<gl_render_utils::RenderPipeline> mReprojectionPipeline;
     ovrTracking2 *mReprojectedTracking;
 };

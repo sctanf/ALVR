@@ -17,8 +17,17 @@ namespace {
 
     )glsl";
 
-    const string COPY_FRAGMENT_SHADER = R"glsl(
+    const string COPY_INPUT_FRAGMENT_SHADER = R"glsl(
         uniform samplerExternalOES tex0;
+        in vec2 uv;
+        out vec3 color;
+        void main() {
+            color = texture(tex0, uv).rgb;
+        }
+    )glsl";
+
+    const string COPY_FRAGMENT_SHADER = R"glsl(
+        uniform sampler2D tex0;
         in vec2 uv;
         out float color;
         void main() {
@@ -27,7 +36,7 @@ namespace {
     )glsl";
 
     const string RGB_TO_LUMINANCE_FRAGMENT_SHADER = R"glsl(
-        uniform samplerExternalOES tex0;
+        uniform sampler2D tex0;
         in vec2 uv;
         out float color;
         void main() {
@@ -36,15 +45,16 @@ namespace {
     )glsl";
 
     const string REPROJECTION_FRAGMENT_SHADER = R"glsl(
-        uniform samplerExternalOES tex0, tex1;
+        uniform sampler2D tex0, tex1;
         uniform blockData {
             highp float magnitude;
         };
         in vec2 uv;
         out vec3 color;
         void main() {
-            vec2 warp = uv + texture(tex1, uv).rg * -1. * magnitude;
-            color = texture(tex0, warp).rgb;
+            //vec2 warp = uv + texture(tex1, uv).rg * -1. * magnitude;
+            //color = texture(tex0, warp).rgb;
+            color = texture(tex1, uv).rgb;
         }
     )glsl";
 }
@@ -57,13 +67,24 @@ Reprojection::Reprojection(Texture *inputSurface)
 void Reprojection::Initialize(ReprojectionData reprojectionData) {
     auto reprojectionCommonShaderStr = REPROJECTION_COMMON_SHADER_FORMAT;
 
+    mInputSurfaceState = make_unique<RenderState>(mInputSurface);
+
+    mInputTexture.reset(
+            new Texture(false, reprojectionData.eyeWidth * 2, reprojectionData.eyeHeight, GL_RGB8));
+    mInputState = make_unique<RenderState>(mInputTexture.get());
+
+    auto CopyInputShaderStr = reprojectionCommonShaderStr + COPY_INPUT_FRAGMENT_SHADER;
+    mCopyInputPipeline = unique_ptr<RenderPipeline>(
+            new RenderPipeline({mInputSurface}, QUAD_2D_VERTEX_SHADER,
+                               CopyInputShaderStr));
+
     mTargetTexture.reset(
             new Texture(false, reprojectionData.eyeWidth * 2, reprojectionData.eyeHeight, GL_R8));
     mTargetState = make_unique<RenderState>(mTargetTexture.get());
 
     auto RGBtoLuminanceShaderStr = reprojectionCommonShaderStr + RGB_TO_LUMINANCE_FRAGMENT_SHADER;
     mRGBtoLuminancePipeline = unique_ptr<RenderPipeline>(
-            new RenderPipeline({mInputSurface}, QUAD_2D_VERTEX_SHADER,
+            new RenderPipeline({mInputTexture.get()}, QUAD_2D_VERTEX_SHADER,
                                RGBtoLuminanceShaderStr));
 
     mRefTexture.reset(
@@ -84,11 +105,11 @@ void Reprojection::Initialize(ReprojectionData reprojectionData) {
 
     mReprojectedTexture.reset(
             new Texture(false, reprojectionData.eyeWidth * 2, reprojectionData.eyeHeight, GL_RGB8));
-    mReprojectedTextureState = make_unique<RenderState>(mReprojectedTexture.get());
+    mReprojectedState = make_unique<RenderState>(mReprojectedTexture.get());
 
     auto ReprojectionShaderStr = reprojectionCommonShaderStr + REPROJECTION_FRAGMENT_SHADER;
     mReprojectionPipeline = unique_ptr<RenderPipeline>(
-            new RenderPipeline({mInputSurface, mMotionVector.get()}, QUAD_2D_VERTEX_SHADER,
+            new RenderPipeline({mInputTexture.get(), mMotionVector.get()}, QUAD_2D_VERTEX_SHADER,
                                ReprojectionShaderStr, 4));
 
     mTargetTracking = new ovrTracking2;
@@ -105,6 +126,9 @@ void Reprojection::Initialize(ReprojectionData reprojectionData) {
 }
 
 void Reprojection::AddFrame(ovrTracking2 *tracking, uint64_t renderTime) {
+    mInputState->ClearDepth();
+    mCopyInputPipeline->Render(*mInputState);
+
     if (emptyFrames < 2) {
         mRefState->ClearDepth();
         mCopyPipeline->Render(*mRefState);
@@ -131,13 +155,13 @@ void Reprojection::Reproject(uint64_t displayTime) {
     if (emptyFrames > 0) return;
     float magnitude = (double)(displayTime - mTargetTime) / (double)(mTargetTime - mRefTime);
 
-    mReprojectedTextureState->ClearDepth();
-    mReprojectionPipeline->Render(*mReprojectedTextureState, &magnitude);
+    mReprojectedState->ClearDepth();
+    mReprojectionPipeline->Render(*mInputSurfaceState, &magnitude);
 
     mReprojectedTracking->HeadPose.Pose.Orientation = Slerp(mRefTracking->HeadPose.Pose.Orientation, mTargetTracking->HeadPose.Pose.Orientation, 1 + magnitude);
 }
 
-bool Reprojection::Render(uint64_t current) {
+bool Reprojection::Check(uint64_t current) {
     if (current < displayTime && emptyFrames == 0 && !frameSent) {
         uint64_t deltaTime = displayTime - current;
         if (deltaTime < 2000) {

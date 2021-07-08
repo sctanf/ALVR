@@ -851,6 +851,9 @@ void renderNative(long long renderedFrameIndex) {
     bool frameSent = false;
     if (g_ctx.Renderer.enableReprojection) {
         frameSent = g_ctx.Renderer.reprojection->GetFrameSent();
+        if (g_ctx.Renderer.enableFFR) {
+            g_ctx.Renderer.ffr->Render(); // Render ffr again because this is weird
+        }
         g_ctx.Renderer.reprojection->AddFrame(&frame->tracking, getTimestampUs());
     }
     if (!frameSent) {
@@ -907,11 +910,11 @@ void renderNative(long long renderedFrameIndex) {
 
 void renderReprojection() {
     if (g_ctx.Renderer.enableReprojection) {
-        if (g_ctx.Renderer.reprojection->Render(getTimestampUs())) {
+        if (g_ctx.Renderer.reprojection->Check(getTimestampUs())) {
             if (!g_ctx.Renderer.reprojection->GetFrameSent()) {
                 g_ctx.Renderer.reprojection->FrameSent();
  
-                g_ctx.FrameIndex++;
+                //g_ctx.FrameIndex++;
 
                 ovrTracking2 *tracking = g_ctx.Renderer.reprojection->GetOutputTracking();
 
