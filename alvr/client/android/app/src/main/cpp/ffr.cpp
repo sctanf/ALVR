@@ -349,7 +349,7 @@ void FFR::Initialize(FFRData ffrData) {
                                decompressSlicesShaderStr));
 
     mTargetTexture.reset(
-            new Texture(false, ffrData.eyeWidth * 2, ffrData.eyeHeight, GL_R8));
+            new Texture(false, ffrData.eyeWidth * 2 / 2, ffrData.eyeHeight / 2, GL_R8));
     mTargetState = make_unique<RenderState>(mTargetTexture.get());
 
     auto RGBtoLuminanceShaderStr = ffrCommonShaderStr + RGB_TO_LUMINANCE_FRAGMENT_SHADER;
@@ -358,7 +358,7 @@ void FFR::Initialize(FFRData ffrData) {
                                RGBtoLuminanceShaderStr));
 
     mRefTexture.reset(
-            new Texture(false, ffrData.eyeWidth * 2, ffrData.eyeHeight, GL_R8));
+            new Texture(false, ffrData.eyeWidth * 2 / 2, ffrData.eyeHeight / 2, GL_R8));
     mRefState = make_unique<RenderState>(mRefTexture.get());
 
     auto CopyShaderStr = ffrCommonShaderStr + COPY_FRAGMENT_SHADER;
@@ -371,7 +371,7 @@ void FFR::Initialize(FFRData ffrData) {
     glGetIntegerv(GL_MOTION_ESTIMATION_SEARCH_BLOCK_Y_QCOM, &searchBlockY);
 
     mMotionVector.reset(
-            new Texture(false, ffrData.eyeWidth * 2 / searchBlockX, ffrData.eyeHeight / searchBlockY, GL_RGBA16F));
+            new Texture(false, ffrData.eyeWidth * 2 / 2 / searchBlockX, ffrData.eyeHeight / 2 / searchBlockY, GL_RGBA16F));
 
     mReprojectedTexture.reset(
             new Texture(false, ffrData.eyeWidth * 2, ffrData.eyeHeight, GL_RGB8));
