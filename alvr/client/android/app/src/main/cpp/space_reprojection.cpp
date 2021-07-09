@@ -78,19 +78,19 @@ void Reprojection::Initialize(ReprojectionData reprojectionData) {
                                CopyInputShaderStr));
 
     mTargetTexture.reset(
-            new Texture(false, reprojectionData.eyeWidth * 2, reprojectionData.eyeHeight, GL_R8));
+            new Texture(false, ffrData.eyeWidth * 2 / 2, ffrData.eyeHeight / 2, GL_R8));
     mTargetState = make_unique<RenderState>(mTargetTexture.get());
 
-    auto RGBtoLuminanceShaderStr = reprojectionCommonShaderStr + RGB_TO_LUMINANCE_FRAGMENT_SHADER;
+    auto RGBtoLuminanceShaderStr = ffrCommonShaderStr + RGB_TO_LUMINANCE_FRAGMENT_SHADER;
     mRGBtoLuminancePipeline = unique_ptr<RenderPipeline>(
-            new RenderPipeline({mInputTexture.get()}, QUAD_2D_VERTEX_SHADER,
+            new RenderPipeline({mExpandedTexture.get()}, QUAD_2D_VERTEX_SHADER,
                                RGBtoLuminanceShaderStr));
 
     mRefTexture.reset(
-            new Texture(false, reprojectionData.eyeWidth * 2, reprojectionData.eyeHeight, GL_R8));
+            new Texture(false, ffrData.eyeWidth * 2 / 2, ffrData.eyeHeight / 2, GL_R8));
     mRefState = make_unique<RenderState>(mRefTexture.get());
 
-    auto CopyShaderStr = reprojectionCommonShaderStr + COPY_FRAGMENT_SHADER;
+    auto CopyShaderStr = ffrCommonShaderStr + COPY_FRAGMENT_SHADER;
     mCopyPipeline = unique_ptr<RenderPipeline>(
             new RenderPipeline({mTargetTexture.get()}, QUAD_2D_VERTEX_SHADER,
                                CopyShaderStr));
@@ -100,7 +100,7 @@ void Reprojection::Initialize(ReprojectionData reprojectionData) {
     glGetIntegerv(GL_MOTION_ESTIMATION_SEARCH_BLOCK_Y_QCOM, &searchBlockY);
 
     mMotionVector.reset(
-            new Texture(false, reprojectionData.eyeWidth * 2 / searchBlockX, reprojectionData.eyeHeight / searchBlockY, GL_RGBA16F));
+            new Texture(false, ffrData.eyeWidth * 2 / 2 / searchBlockX, ffrData.eyeHeight / 2 / searchBlockY, GL_RGBA16F));
 
     mReprojectedTexture.reset(
             new Texture(false, reprojectionData.eyeWidth * 2, reprojectionData.eyeHeight, GL_RGB8));
