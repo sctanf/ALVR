@@ -20,27 +20,27 @@ namespace {
     const string COPY_INPUT_FRAGMENT_SHADER = R"glsl(
         uniform samplerExternalOES tex0;
         in vec2 uv;
-        out vec3 color;
+        out vec4 color;
         void main() {
-            color = texture(tex0, uv).rgb;
+            color = vec4(texture(tex0, uv).rgb, 1);
         }
     )glsl";
 
     const string COPY_FRAGMENT_SHADER = R"glsl(
         uniform sampler2D tex0;
         in vec2 uv;
-        out float color;
+        out vec4 color;
         void main() {
-            color = texture(tex0, uv).r;
+            color = vec4(texture(tex0, uv).r, 1, 1, 1);
         }
     )glsl";
 
     const string RGB_TO_LUMINANCE_FRAGMENT_SHADER = R"glsl(
         uniform sampler2D tex0;
         in vec2 uv;
-        out float color;
+        out vec4 color;
         void main() {
-            color = rgb_2_yuv(texture(tex0, uv).rgb, itu_601_full_range).r;
+            color = vec4(rgb_2_yuv(texture(tex0, uv).rgb, itu_601_full_range).r, 1, 1, 1);
         }
     )glsl";
 
@@ -50,11 +50,10 @@ namespace {
             highp float magnitude;
         };
         in vec2 uv;
-        out vec3 color;
+        out vec4 color;
         void main() {
-            //vec2 warp = uv + texture(tex1, uv).rg * -1. * magnitude;
-            //color = texture(tex0, warp).rgb;
-            color = texture(tex1, uv).rgb;
+            vec2 warp = uv + texture(tex1, uv).rg * -1. * magnitude;
+            color = vec4(texture(tex0, warp).rgb, 1);
         }
     )glsl";
 }
@@ -153,7 +152,7 @@ void Reprojection::EstimateMotion() {
 
 void Reprojection::Reproject(uint64_t displayTime) {
     if (emptyFrames > 0) return;
-    float magnitude = (double)(displayTime - mTargetTime) / (double)(mTargetTime - mRefTime);
+    float magnitude = (double)(displayTime - mTargetTime) / (double)(mTargetTime - mRefTime) / 4000;
 
     mReprojectedState->ClearDepth();
     mReprojectionPipeline->Render(*mInputSurfaceState, &magnitude);
