@@ -124,7 +124,8 @@ void Reprojection::Initialize(ReprojectionData reprojectionData) {
     frameSent = false;
 }
 
-void Reprojection::AddFrame(ovrTracking2 *tracking, uint64_t renderTime) {
+void Reprojection::AddFrame(uint64_t index, ovrTracking2 *tracking, uint64_t renderTime) {
+    lastIndex = index;
     mInputState->ClearDepth();
     mCopyInputPipeline->Render(*mInputState);
 
@@ -170,6 +171,10 @@ bool Reprojection::Check(uint64_t current) {
         }
     }
     return false;
+}
+
+uint64_t Reprojection::GetLastIndex() {
+    return lastIndex;
 }
 
 bool Reprojection::GetFrameSent() {

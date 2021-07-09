@@ -37,13 +37,15 @@ public:
 
     void Initialize(ReprojectionData reprojectionData);
 
-    void AddFrame(ovrTracking2 *tracking, uint64_t renderTime);
+    void AddFrame(uint64_t index, ovrTracking2 *tracking, uint64_t renderTime);
 
     void EstimateMotion();
 
     void Reproject(uint64_t displayTime);
 
     bool Check(uint64_t current);
+
+    uint64_t GetLastIndex();
 
     bool GetFrameSent();
     void FrameSent();
@@ -53,6 +55,8 @@ public:
     ovrTracking2 *GetOutputTracking() { return mReprojectedTracking; }
 
 private:
+
+    uint64_t lastIndex;
 
     float refreshRate;
     uint64_t frameTime;

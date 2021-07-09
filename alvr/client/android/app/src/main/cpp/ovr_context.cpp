@@ -854,11 +854,11 @@ void renderNative(long long renderedFrameIndex) {
         if (g_ctx.Renderer.enableFFR) {
             g_ctx.Renderer.ffr->Render(); // Render ffr again because this is weird
         }
-        g_ctx.Renderer.reprojection->AddFrame(&frame->tracking, getTimestampUs());
+        g_ctx.Renderer.ffr->AddFrame(renderedFrameIndex, &frame->tracking, getTimestampUs());
     }
     if (!frameSent) {
         if (g_ctx.Renderer.enableReprojection) {
-            g_ctx.Renderer.reprojection->FrameSent();
+            g_ctx.Renderer.ffr->FrameSent();
         }
 
         LatencyCollector::Instance().rendered2(renderedFrameIndex);
@@ -879,7 +879,7 @@ void renderNative(long long renderedFrameIndex) {
         vrapi_SubmitFrame2(g_ctx.Ovr, &frameDesc);
 
         if (g_ctx.Renderer.enableReprojection) {
-            g_ctx.Renderer.reprojection->ResetFrameSent();
+            g_ctx.Renderer.ffr->ResetFrameSent();
         }
 
         LatencyCollector::Instance().submit(renderedFrameIndex);
@@ -888,7 +888,7 @@ void renderNative(long long renderedFrameIndex) {
 
 // Run motion estimation (preemptive)
         if (g_ctx.Renderer.enableReprojection) {
-            g_ctx.Renderer.reprojection->EstimateMotion();
+            g_ctx.Renderer.ffr->EstimateMotion();
         }
 
         FrameLog(renderedFrameIndex, "vrapi_SubmitFrame2 Orientation=(%f, %f, %f, %f)",
@@ -909,14 +909,15 @@ void renderNative(long long renderedFrameIndex) {
 }
 
 void renderReprojection() {
+    return;
     if (g_ctx.Renderer.enableReprojection) {
-        if (g_ctx.Renderer.reprojection->Check(getTimestampUs())) {
-            if (!g_ctx.Renderer.reprojection->GetFrameSent()) {
-                g_ctx.Renderer.reprojection->FrameSent();
+        if (g_ctx.Renderer.ffr->Check(getTimestampUs())) {
+            if (!g_ctx.Renderer.ffr->GetFrameSent()) {
+                g_ctx.Renderer.ffr->FrameSent();
  
                 //g_ctx.FrameIndex++;
 
-                ovrTracking2 *tracking = g_ctx.Renderer.reprojection->GetOutputTracking();
+                ovrTracking2 *tracking = g_ctx.Renderer.ffr->GetOutputTracking();
 
 // Render eye images and setup the primary layer using ovrTracking2.
                 const ovrLayerProjection2 worldLayer =

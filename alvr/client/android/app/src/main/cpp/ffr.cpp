@@ -12,6 +12,7 @@ namespace {
     const string FFR_COMMON_SHADER_FORMAT = R"glsl(
         #version 300 es
         #extension GL_OES_EGL_image_external_essl3 : enable
+        #extension GL_EXT_YUV_target : enable
         precision highp float;
 
         // https://www.shadertoy.com/view/3l2GRR
@@ -202,6 +203,46 @@ namespace {
         }
     )glsl";
 
+    const string COPY_INPUT_FRAGMENT_SHADER = R"glsl(
+        uniform samplerExternalOES tex0;
+        in vec2 uv;
+        out vec3 color;
+        void main() {
+            color = texture(tex0, uv).rgb;
+        }
+    )glsl";
+
+    const string COPY_FRAGMENT_SHADER = R"glsl(
+        uniform sampler2D tex0;
+        in vec2 uv;
+        out vec4 color;
+        void main() {
+            color = vec4(texture(tex0, uv).r, 1, 1, 1);
+        }
+    )glsl";
+
+    const string RGB_TO_LUMINANCE_FRAGMENT_SHADER = R"glsl(
+        uniform sampler2D tex0;
+        in vec2 uv;
+        out vec4 color;
+        void main() {
+            color = vec4(rgb_2_yuv(texture(tex0, uv).rgb, itu_601_full_range).r, 1, 1, 1);
+        }
+    )glsl";
+
+    const string REPROJECTION_FRAGMENT_SHADER = R"glsl(
+        uniform sampler2D tex0, tex1;
+        uniform blockData {
+            highp float magnitude;
+        };
+        in vec2 uv;
+        out vec4 color;
+        void main() {
+            vec2 warp = uv + texture(tex1, uv).rg * -1. * magnitude;
+            color = vec4(texture(tex0, warp).rgb, 1);
+        }
+    )glsl";
+
     const float DEG_TO_RAD = (float) M_PI / 180;
 
 #define INVERSE_DISTORTION_FN(a) atan(a);
@@ -306,9 +347,131 @@ void FFR::Initialize(FFRData ffrData) {
     mDecompressSlicesPipeline = unique_ptr<RenderPipeline>(
             new RenderPipeline({mInputSurface}, QUAD_2D_VERTEX_SHADER,
                                decompressSlicesShaderStr));
+
+    mTargetTexture.reset(
+            new Texture(false, ffrData.eyeWidth * 2, ffrData.eyeHeight, GL_R8));
+    mTargetState = make_unique<RenderState>(mTargetTexture.get());
+
+    auto RGBtoLuminanceShaderStr = ffrCommonShaderStr + RGB_TO_LUMINANCE_FRAGMENT_SHADER;
+    mRGBtoLuminancePipeline = unique_ptr<RenderPipeline>(
+            new RenderPipeline({mExpandedTexture.get()}, QUAD_2D_VERTEX_SHADER,
+                               RGBtoLuminanceShaderStr));
+
+    mRefTexture.reset(
+            new Texture(false, ffrData.eyeWidth * 2, ffrData.eyeHeight, GL_R8));
+    mRefState = make_unique<RenderState>(mRefTexture.get());
+
+    auto CopyShaderStr = ffrCommonShaderStr + COPY_FRAGMENT_SHADER;
+    mCopyPipeline = unique_ptr<RenderPipeline>(
+            new RenderPipeline({mTargetTexture.get()}, QUAD_2D_VERTEX_SHADER,
+                               CopyShaderStr));
+
+    GLint searchBlockX, searchBlockY;
+    glGetIntegerv(GL_MOTION_ESTIMATION_SEARCH_BLOCK_X_QCOM, &searchBlockX);
+    glGetIntegerv(GL_MOTION_ESTIMATION_SEARCH_BLOCK_Y_QCOM, &searchBlockY);
+
+    mMotionVector.reset(
+            new Texture(false, ffrData.eyeWidth * 2 / searchBlockX, ffrData.eyeHeight / searchBlockY, GL_RGBA16F));
+
+    mReprojectedTexture.reset(
+            new Texture(false, ffrData.eyeWidth * 2, ffrData.eyeHeight, GL_RGB8));
+    mReprojectedState = make_unique<RenderState>(mReprojectedTexture.get());
+
+    auto ReprojectionShaderStr = ffrCommonShaderStr + REPROJECTION_FRAGMENT_SHADER;
+    mReprojectionPipeline = unique_ptr<RenderPipeline>(
+            new RenderPipeline({mExpandedTexture.get(), mMotionVector.get()}, QUAD_2D_VERTEX_SHADER,
+                               ReprojectionShaderStr, 4));
+
+    mTargetTracking = new ovrTracking2;
+    mRefTracking = new ovrTracking2;
+    mReprojectedTracking = new ovrTracking2;
+
+    mTargetTime = 0;
+    mRefTime = 0;
+    refreshRate = 80;
+    frameTime = 1e6 / refreshRate;
+    lastSubmit = getTimestampUs();
+    emptyFrames = 2;
+    frameSent = false;
 }
 
 void FFR::Render() const {
     mExpandedTextureState->ClearDepth();
     mDecompressSlicesPipeline->Render(*mExpandedTextureState);
+
+    if (emptyFrames < 2) {
+        mRefState->ClearDepth();
+        mCopyPipeline->Render(*mRefState);
+    }
+
+    mTargetState->ClearDepth();
+    mRGBtoLuminancePipeline->Render(*mTargetState);
+
+    if (emptyFrames > 0) return;
+// reversed inputs to TexEstimateMotionQCOM so the starting position doesnt need to be corrected
+    GL(glTexEstimateMotionQCOM(mTargetTexture->GetGLTexture(), mRefTexture->GetGLTexture(), mMotionVector->GetGLTexture()));
+
+    if (emptyFrames > 0) return;
+    float magnitude = 0.00025;
+
+    mExpandedTextureState->ClearDepth();
+    mReprojectionPipeline->Render(*mExpandedTextureState, &magnitude);
+}
+
+void FFR::AddFrame(uint64_t index, ovrTracking2 *tracking, uint64_t renderTime) {
+    lastIndex = index;
+
+    if (emptyFrames < 2) {
+        memcpy(mRefTracking, mTargetTracking, sizeof(ovrTracking2));
+        mRefTime = mTargetTime;
+    }
+
+    memcpy(mTargetTracking, tracking, sizeof(ovrTracking2));
+    memcpy(mReprojectedTracking, tracking, sizeof(ovrTracking2));
+    mTargetTime = renderTime;
+
+    if (emptyFrames > 0) emptyFrames--;
+}
+
+void FFR::EstimateMotion() {
+}
+
+void FFR::Reproject(uint64_t displayTime) {
+    if (emptyFrames > 0) return;
+    float magnitude = (double)(displayTime - mTargetTime) / (double)(mTargetTime - mRefTime) / 3000;
+
+    mReprojectedState->ClearDepth();
+    mReprojectionPipeline->Render(*mReprojectedState, &magnitude);
+
+    mReprojectedTracking->HeadPose.Pose.Orientation = Slerp(mRefTracking->HeadPose.Pose.Orientation, mTargetTracking->HeadPose.Pose.Orientation, 1 + magnitude);
+}
+
+bool FFR::Check(uint64_t current) {
+    if (current < displayTime && emptyFrames == 0 && !frameSent) {
+        uint64_t deltaTime = displayTime - current;
+        if (deltaTime < 2000) {
+            // Less than 2ms remaining
+            FFR::Reproject(displayTime);
+            return true;
+        }
+    }
+    return false;
+}
+
+uint64_t FFR::GetLastIndex() {
+    return lastIndex;
+}
+
+bool FFR::GetFrameSent() {
+    return frameSent;
+}
+
+void FFR::FrameSent() {
+    frameSent = true;
+}
+
+void FFR::ResetFrameSent() {
+    lastSubmit = getTimestampUs();
+    displayTime = lastSubmit + frameTime;
+    frameSent = false;
 }
