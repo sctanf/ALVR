@@ -843,6 +843,11 @@ void renderNative(long long renderedFrameIndex) {
     FrameLog(renderedFrameIndex, "Frame latency is %lu us.",
              getTimestampUs() - frame->fetchTime);
 
+
+        if (g_ctx.Renderer.enableFFR) {
+            g_ctx.Renderer.ffr->SetTime((frame->displayTime - vrapi_GetTimeInSeconds()) * 1e6);
+        }
+
 // Render eye images and setup the primary layer using ovrTracking2.
     const ovrLayerProjection2 worldLayer =
             ovrRenderer_RenderFrame(&g_ctx.Renderer, &frame->tracking, false);

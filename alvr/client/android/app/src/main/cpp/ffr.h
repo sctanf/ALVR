@@ -48,6 +48,8 @@ public:
 
     void Reproject(uint64_t displayTime);
 
+    void SetTime(float displayTime);
+
     bool Check(uint64_t current);
 
     uint64_t GetLastIndex();
@@ -83,6 +85,7 @@ private:
     std::unique_ptr<gl_render_utils::RenderState> mTargetState;
     ovrTracking2 *mTargetTracking;
     uint64_t mTargetTime;
+    float mPredictedTargetTime;
 
     std::unique_ptr<gl_render_utils::RenderPipeline> mRGBtoLuminancePipeline;
 

@@ -40,6 +40,7 @@ namespace {
         // SOFTWARE.
 
         const uvec2 TARGET_RESOLUTION = uvec2(%u, %u);
+        const vec2 TARGET_RESOLUTION_F = vec2(%u, %u);
         const uvec2 OPTIMIZED_RESOLUTION = uvec2(%u, %u);
         const vec2 FOCUS_POSITION = vec2(%f, %f);
         const vec2 FOVEATION_SCALE = vec2(%f, %f);
@@ -238,7 +239,7 @@ namespace {
         in vec2 uv;
         out vec4 color;
         void main() {
-            vec2 warp = uv + texture(tex1, uv).rg * -1. * magnitude;
+            vec2 warp = uv + texture(tex1, uv).rg * -1. * magnitude / TARGET_RESOLUTION_F;
             color = vec4(texture(tex0, warp).rgb, 1);
         }
     )glsl";
@@ -333,6 +334,7 @@ void FFR::Initialize(FFRData ffrData) {
     auto fv = CalculateFoveationVars(ffrData);
     auto ffrCommonShaderStr = string_format(FFR_COMMON_SHADER_FORMAT,
                                             fv.targetEyeWidth, fv.targetEyeHeight,
+                                            fv.targetEyeWidth, fv.targetEyeHeight,
                                             fv.optimizedEyeWidth, fv.optimizedEyeHeight,
                                             fv.focusPositionX, fv.focusPositionY,
                                             fv.foveationScaleX, fv.foveationScaleY,
@@ -412,7 +414,8 @@ void FFR::Render() const {
     GL(glTexEstimateMotionQCOM(mTargetTexture->GetGLTexture(), mRefTexture->GetGLTexture(), mMotionVector->GetGLTexture()));
 
     if (emptyFrames > 0) return;
-    float magnitude = 0.00025;
+    float magnitude = (double)(mPredictedTargetTime) / (double)(mTargetTime - mRefTime);
+    LOGI("mag %f", magnitude);
 
     mExpandedTextureState->ClearDepth();
     mReprojectionPipeline->Render(*mExpandedTextureState, &magnitude);
@@ -438,12 +441,16 @@ void FFR::EstimateMotion() {
 
 void FFR::Reproject(uint64_t displayTime) {
     if (emptyFrames > 0) return;
-    float magnitude = (double)(displayTime - mTargetTime) / (double)(mTargetTime - mRefTime) / 3000;
+    float magnitude = (double)(displayTime - mTargetTime) / (double)(mTargetTime - mRefTime);
 
     mReprojectedState->ClearDepth();
     mReprojectionPipeline->Render(*mReprojectedState, &magnitude);
 
     mReprojectedTracking->HeadPose.Pose.Orientation = Slerp(mRefTracking->HeadPose.Pose.Orientation, mTargetTracking->HeadPose.Pose.Orientation, 1 + magnitude);
+}
+
+void FFR::SetTime(float displayTime) {
+    mPredictedTargetTime = displayTime;
 }
 
 bool FFR::Check(uint64_t current) {
